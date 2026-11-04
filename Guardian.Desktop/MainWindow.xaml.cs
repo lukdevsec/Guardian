@@ -1,327 +1,312 @@
 
 using System;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Guardian.Desktop.IPC;
 using Microsoft.UI;
-using Microsoft.UI.Dispatching;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
+using WinUIEx;
 
 namespace Guardian.Desktop;
 
 public sealed partial class MainWindow : Window
 {
-    private readonly DispatcherTimer _refreshTimer;
-    private FileSystemWatcher? _logWatcher;
+    private CancellationTokenSource? _connectionCts;
 
-    private readonly string _logDirectory = Path.Combine(
-        Environment.GetFolderPath(
-            Environment.SpecialFolder.LocalApplicationData),
-        "Guardian",
-        "Logs");
+    private readonly DispatcherTimer _watchdog;
+    private readonly WindowManager _windowManager;
+
+    private DateTimeOffset _lastMessage =
+        DateTimeOffset.MinValue;
+
+    private bool _connected;
+    private bool _closed;
+    private bool _allowClose;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        // Compact Guardian window.
+        // Compact window dimensions.
         AppWindow.Resize(new SizeInt32(390, 710));
 
-        // Fallback refresh in case file events are missed.
-        _refreshTimer = new DispatcherTimer
+        // Initialize Windows system tray.
+        _windowManager = WindowManager.Get(this);
+        _windowManager.IsVisibleInTray = true;
+
+        // Left-click tray icon.
+        _windowManager.TrayIconSelected += (_, _) =>
+        {
+            ShowGuardianWindow();
+        };
+
+        // Right-click tray icon.
+        _windowManager.TrayIconContextMenu += (_, e) =>
+        {
+            var menu = new MenuFlyout();
+
+            var openItem = new MenuFlyoutItem
+            {
+                Text = "Open Guardian"
+            };
+
+            openItem.Click += (_, _) =>
+            {
+                ShowGuardianWindow();
+            };
+
+            var exitItem = new MenuFlyoutItem
+            {
+                Text = "Exit Guardian"
+            };
+
+            exitItem.Click += (_, _) =>
+            {
+                ExitApplication();
+            };
+
+            menu.Items.Add(openItem);
+            menu.Items.Add(new MenuFlyoutSeparator());
+            menu.Items.Add(exitItem);
+
+            e.Flyout = menu;
+        };
+
+        // Clicking X hides the window instead of exiting.
+        AppWindow.Closing += (_, e) =>
+        {
+            if (!_allowClose)
+            {
+                e.Cancel = true;
+                AppWindow.Hide();
+            }
+        };
+
+        // Position the window near the bottom-right corner.
+        PositionBottomRight();
+
+        // Watchdog for detecting lost IPC connection.
+        _watchdog = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(2)
         };
 
-        _refreshTimer.Tick += (_, _) => RefreshData();
-
-        InitializeLiveUpdates();
-
-        _refreshTimer.Start();
-
-        RefreshData();
+        _watchdog.Tick += (_, _) => CheckConnection();
+        _watchdog.Start();
 
         Closed += OnWindowClosed;
+
+        SetOfflineStatus();
+        StartConnection();
     }
 
-    private void InitializeLiveUpdates()
+    private void ShowGuardianWindow()
     {
-        Directory.CreateDirectory(_logDirectory);
+        PositionBottomRight();
 
-        _logWatcher = new FileSystemWatcher(_logDirectory)
+        AppWindow.Show();
+        Activate();
+    }
+
+    private void PositionBottomRight()
+    {
+        try
         {
-            Filter = "*.jsonl",
-            NotifyFilter =
-                NotifyFilters.LastWrite |
-                NotifyFilters.FileName |
-                NotifyFilters.Size,
-            IncludeSubdirectories = false
-        };
+            var hwnd =
+                WinRT.Interop.WindowNative.GetWindowHandle(this);
 
-        _logWatcher.Changed += OnLogChanged;
-        _logWatcher.Created += OnLogChanged;
-        _logWatcher.Renamed += OnLogRenamed;
+            var windowId =
+                Win32Interop.GetWindowIdFromWindow(hwnd);
 
-        _logWatcher.EnableRaisingEvents = true;
-    }
+            var displayArea = DisplayArea.GetFromWindowId(
+                windowId,
+                DisplayAreaFallback.Nearest);
 
-    private void OnLogChanged(
-        object sender,
-        FileSystemEventArgs e)
-    {
-        QueueRefresh();
-    }
+            if (displayArea == null)
+                return;
 
-    private void OnLogRenamed(
-        object sender,
-        RenamedEventArgs e)
-    {
-        QueueRefresh();
-    }
+            var workArea = displayArea.WorkArea;
+            var size = AppWindow.Size;
 
-    private void QueueRefresh()
-    {
-        // FileSystemWatcher callbacks are not on the UI thread.
-        DispatcherQueue.TryEnqueue(() =>
+            int x = workArea.X +
+                    workArea.Width -
+                    size.Width - 16;
+
+            int y = workArea.Y +
+                    workArea.Height -
+                    size.Height - 16;
+
+            AppWindow.Move(new PointInt32(
+                Math.Max(workArea.X, x),
+                Math.Max(workArea.Y, y)));
+        }
+        catch (Exception)
         {
-            RefreshData();
-        });
+            // Keep the default window position if positioning fails.
+        }
+    }
+
+    private void ExitApplication()
+    {
+        _allowClose = true;
+
+        _watchdog.Stop();
+        _connectionCts?.Cancel();
+
+        _windowManager.IsVisibleInTray = false;
+
+        Close();
+    }
+
+    private void StartConnection()
+    {
+        _connectionCts?.Cancel();
+
+        var cts = new CancellationTokenSource();
+        _connectionCts = cts;
+
+        SetOfflineStatus();
+
+        var client = new TelemetryClient();
+
+        _ = RunConnectionAsync(client, cts);
+    }
+
+    private async Task RunConnectionAsync(
+        TelemetryClient client,
+        CancellationTokenSource cts)
+    {
+        try
+        {
+            await client.RunAsync(snapshot =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (_closed ||
+                        !ReferenceEquals(_connectionCts, cts))
+                    {
+                        return;
+                    }
+
+                    if (snapshot == null)
+                    {
+                        SetOfflineStatus();
+                    }
+                    else
+                    {
+                        ApplySnapshot(snapshot);
+                    }
+                });
+            }, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Normal shutdown.
+        }
+        finally
+        {
+            if (ReferenceEquals(_connectionCts, cts))
+                _connectionCts = null;
+
+            cts.Dispose();
+        }
+    }
+
+    private void ApplySnapshot(
+        TelemetrySnapshot snapshot)
+    {
+        _connected = true;
+        _lastMessage = DateTimeOffset.UtcNow;
+
+        ProcessesText.Text =
+            snapshot.Processes.ToString("N0");
+
+        ConnectionsText.Text =
+            snapshot.Connections.ToString("N0");
+
+        AlertsText.Text =
+            snapshot.Alerts.ToString("N0");
+
+        LatestEventText.Text =
+            snapshot.LastEvent;
+
+        UpdatedText.Text =
+            $"Live update: {DateTime.Now:HH:mm:ss}";
+
+        if (snapshot.ServiceStatus == "Running")
+        {
+            StatusText.Text = "Monitoring active";
+
+            StatusText.Foreground =
+                new SolidColorBrush(Colors.LightGreen);
+
+            StatusDescription.Text =
+                "Guardian service is connected. " +
+                "Threat detection is running in " +
+                "monitor-only mode.";
+        }
+        else
+        {
+            StatusText.Text = "Service starting";
+
+            StatusText.Foreground =
+                new SolidColorBrush(Colors.Orange);
+
+            StatusDescription.Text =
+                "Guardian service is connected but " +
+                "monitoring is not yet confirmed.";
+        }
+    }
+
+    private void SetOfflineStatus()
+    {
+        _connected = false;
+
+        StatusText.Text = "Service offline";
+
+        StatusText.Foreground =
+            new SolidColorBrush(Colors.OrangeRed);
+
+        StatusDescription.Text =
+            "Waiting for Guardian Security Service...";
+
+        UpdatedText.Text =
+            "Live connection unavailable";
+    }
+
+    private void CheckConnection()
+    {
+        if (!_connected)
+            return;
+
+        if (DateTimeOffset.UtcNow - _lastMessage >
+            TimeSpan.FromSeconds(5))
+        {
+            SetOfflineStatus();
+        }
     }
 
     private void RefreshButton_Click(
         object sender,
         RoutedEventArgs e)
     {
-        RefreshData();
-    }
-
-    private void RefreshData()
-    {
-        try
-        {
-            string eventsPath = Path.Combine(
-                _logDirectory, "events.jsonl");
-
-            string alertsPath = Path.Combine(
-                _logDirectory, "alerts.jsonl");
-
-            string[] eventLines = ReadLogLines(eventsPath);
-            string[] alertLines = ReadLogLines(alertsPath);
-
-            int processCount = 0;
-            int connectionCount = 0;
-            int alertCount = 0;
-
-            string latestEvent = "No events available";
-            DateTimeOffset? latestTimestamp = null;
-
-            foreach (string line in eventLines)
-            {
-                try
-                {
-                    using JsonDocument document =
-                        JsonDocument.Parse(line);
-
-                    JsonElement root = document.RootElement;
-
-                    string type =
-                        GetString(root, "Type") ??
-                        GetString(root, "type") ??
-                        "";
-
-                    if (type == "process_start")
-                        processCount++;
-
-                    if (type == "tcp_connection_observed")
-                        connectionCount++;
-
-                    if (TryGetTimestamp(
-                        root, out DateTimeOffset timestamp))
-                    {
-                        if (latestTimestamp == null ||
-                            timestamp > latestTimestamp.Value)
-                        {
-                            latestTimestamp = timestamp;
-                            latestEvent = BuildEventSummary(root, type);
-                        }
-                    }
-                }
-                catch (JsonException)
-                {
-                    // Ignore incomplete or malformed JSONL records.
-                }
-            }
-
-            foreach (string line in alertLines)
-            {
-                if (string.IsNullOrWhiteSpace(line))
-                    continue;
-
-                try
-                {
-                    using JsonDocument document =
-                        JsonDocument.Parse(line);
-
-                    alertCount++;
-                }
-                catch (JsonException)
-                {
-                    // Ignore malformed alert records.
-                }
-            }
-
-            ProcessesText.Text = processCount.ToString("N0");
-            ConnectionsText.Text = connectionCount.ToString("N0");
-            AlertsText.Text = alertCount.ToString("N0");
-
-            LatestEventText.Text = latestEvent;
-
-            UpdatedText.Text =
-                $"Dashboard updated: {DateTime.Now:HH:mm:ss}";
-
-            // Fresh telemetry does not guarantee that
-            // the agent is currently running.
-            bool recentTelemetry =
-                latestTimestamp.HasValue &&
-                latestTimestamp.Value >=
-                    DateTimeOffset.UtcNow.AddSeconds(-30) &&
-                latestTimestamp.Value <=
-                    DateTimeOffset.UtcNow.AddMinutes(1);
-
-            if (recentTelemetry)
-            {
-                StatusText.Text = "Telemetry received";
-
-                StatusText.Foreground = new SolidColorBrush(
-                    Colors.LightGreen);
-
-                StatusDescription.Text =
-                    "Recent security events detected. " +
-                    "Agent health is not independently verified.";
-            }
-            else
-            {
-                StatusText.Text = "Status unverified";
-
-                StatusText.Foreground = new SolidColorBrush(
-                    Colors.Orange);
-
-                StatusDescription.Text =
-                    "No recent telemetry. Start Guardian Agent " +
-                    "or wait for new system activity.";
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = "Data unavailable";
-
-            StatusText.Foreground = new SolidColorBrush(
-                Colors.OrangeRed);
-
-            StatusDescription.Text =
-                $"Guardian log error: {ex.Message}";
-        }
-    }
-
-    private static string BuildEventSummary(
-        JsonElement root,
-        string type)
-    {
-        if (type == "process_start")
-        {
-            string processName =
-                GetString(root, "Name") ??
-                "Unknown process";
-
-            return $"Process started: {processName}";
-        }
-
-        if (type == "tcp_connection_observed")
-        {
-            string remoteAddress =
-                GetString(root, "RemoteAddress") ??
-                "Unknown IP";
-
-            string remotePort =
-                GetString(root, "RemotePort") ??
-                "?";
-
-            return $"TCP: {remoteAddress}:{remotePort}";
-        }
-
-        return string.IsNullOrWhiteSpace(type)
-            ? "Unknown event"
-            : type;
-    }
-
-    private static string[] ReadLogLines(string path)
-    {
-        if (!File.Exists(path))
-            return Array.Empty<string>();
-
-        // Allows the agent to append while GUI reads.
-        using var stream = new FileStream(
-            path,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.ReadWrite | FileShare.Delete);
-
-        using var reader = new StreamReader(stream);
-
-        string contents = reader.ReadToEnd();
-
-        return contents.Split(
-            new[] { "\r\n", "\n" },
-            StringSplitOptions.RemoveEmptyEntries);
-    }
-
-    private static string? GetString(
-        JsonElement element,
-        string propertyName)
-    {
-        if (!element.TryGetProperty(
-            propertyName, out JsonElement value))
-        {
-            return null;
-        }
-
-        return value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : value.ToString();
-    }
-
-    private static bool TryGetTimestamp(
-        JsonElement element,
-        out DateTimeOffset timestamp)
-    {
-        timestamp = default;
-
-        string? value =
-            GetString(element, "Timestamp") ??
-            GetString(element, "timestamp");
-
-        return DateTimeOffset.TryParse(
-            value, out timestamp);
+        StartConnection();
     }
 
     private void OnWindowClosed(
         object sender,
         WindowEventArgs args)
     {
-        _refreshTimer.Stop();
+        _closed = true;
 
-        if (_logWatcher != null)
-        {
-            _logWatcher.EnableRaisingEvents = false;
+        _watchdog.Stop();
+        _connectionCts?.Cancel();
 
-            _logWatcher.Changed -= OnLogChanged;
-            _logWatcher.Created -= OnLogChanged;
-            _logWatcher.Renamed -= OnLogRenamed;
-
-            _logWatcher.Dispose();
-            _logWatcher = null;
-        }
+        _windowManager.IsVisibleInTray = false;
+        _windowManager.Dispose();
     }
 }

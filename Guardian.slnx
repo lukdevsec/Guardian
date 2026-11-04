@@ -4,5 +4,7 @@
     <Platform Project="x64" />
     <Deploy />
   </Project>
+  <Project Path="Guardian.Monitoring/Guardian.Monitoring.csproj" Id="4013f303-3274-4731-8d2f-ea8852c95911" />
+  <Project Path="Guardian.Service/Guardian.Service.csproj" Id="106657e3-3132-4880-825d-6c8fba98473d" />
   <Project Path="Guardian/Guardian.csproj" />
 </Solution>

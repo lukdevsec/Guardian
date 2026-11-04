@@ -161,7 +161,7 @@
                 </Border>
 
                 <!-- Actions -->
-                <Button Content="Refresh security data"
+                <Button Content="Reconnect to Guardian"
                         Click="RefreshButton_Click"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center"
