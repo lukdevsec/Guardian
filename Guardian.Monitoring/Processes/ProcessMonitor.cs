@@ -1,7 +1,9 @@
 ﻿
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Management;
+using System.Threading;
 using Guardian.Core.Models;
 
 namespace Guardian.Monitoring.Processes;
@@ -9,42 +11,85 @@ namespace Guardian.Monitoring.Processes;
 public sealed class ProcessMonitor : IDisposable
 {
     private ManagementEventWatcher? _watcher;
+    private Timer? _pollTimer;
+
+    private readonly object _pollLock = new();
+
+    private HashSet<int> _knownProcesses = new();
+
+    private bool _baselineReady;
+    private bool _disposed;
+
+    public string Mode { get; private set; } = "Not started";
 
     public event EventHandler<ProcessEvent>? ProcessStarted;
 
     public void Start()
     {
-        if (_watcher != null)
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (_watcher != null || _pollTimer != null)
+        {
             throw new InvalidOperationException(
                 "Process monitor is already running.");
+        }
 
-        var scope = new ManagementScope(
-            @"\\.\root\CIMV2");
-
-        scope.Connect();
-
-        var query = new WqlEventQuery(
-            "SELECT * FROM Win32_ProcessStartTrace");
-
-        var watcher = new ManagementEventWatcher(
-            scope, query);
-
-        watcher.EventArrived += OnProcessStarted;
+        ManagementEventWatcher? watcher = null;
 
         try
         {
+            var scope = new ManagementScope(
+                @"\\.\root\CIMV2");
+
+            scope.Connect();
+
+            var query = new WqlEventQuery(
+                "SELECT * FROM Win32_ProcessStartTrace");
+
+            watcher = new ManagementEventWatcher(
+                scope, query);
+
+            watcher.EventArrived += OnWmiProcessStarted;
+
             watcher.Start();
+
             _watcher = watcher;
+            Mode = "WMI event monitoring";
+
+            return;
+        }
+        catch (ManagementException ex)
+        {
+            if (watcher != null)
+            {
+                watcher.EventArrived -= OnWmiProcessStarted;
+                watcher.Dispose();
+            }
+
+            Debug.WriteLine(
+                $"Guardian WMI unavailable: {ex.Message}");
+
+            StartPollingFallback();
+
+            Mode = "Polling fallback - WMI unavailable";
         }
         catch
         {
-            watcher.EventArrived -= OnProcessStarted;
-            watcher.Dispose();
+            if (watcher != null)
+            {
+                watcher.EventArrived -= OnWmiProcessStarted;
+                watcher.Dispose();
+            }
+
             throw;
         }
     }
 
-    private void OnProcessStarted(
+    // ==========================================
+    // WMI EVENT MONITORING
+    // ==========================================
+
+    private void OnWmiProcessStarted(
         object sender,
         EventArrivedEventArgs e)
     {
@@ -77,9 +122,119 @@ public sealed class ProcessMonitor : IDisposable
         catch (Exception ex)
         {
             Debug.WriteLine(
-                $"Guardian ProcessMonitor error: {ex}");
+                $"Guardian WMI event error: {ex.Message}");
         }
     }
+
+    // ==========================================
+    // POLLING FALLBACK
+    // ==========================================
+
+    private void StartPollingFallback()
+    {
+        // Establish baseline without reporting all
+        // currently running processes as new events.
+        PollProcesses(null);
+
+        _pollTimer = new Timer(
+            PollProcesses,
+            null,
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(1));
+    }
+
+
+    private void PollProcesses(object? state)
+    {
+        var newEvents = new List<ProcessEvent>();
+
+        lock (_pollLock)
+        {
+            if (_disposed)
+                return;
+
+            var currentProcesses = new HashSet<int>();
+
+            Process[] processes;
+
+            try
+            {
+                processes = Process.GetProcesses();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(
+                    $"Guardian process enumeration error: {ex.Message}");
+
+                return;
+            }
+
+            foreach (Process process in processes)
+            {
+                using (process)
+                {
+                    try
+                    {
+                        int pid = process.Id;
+                        string name = process.ProcessName;
+
+                        if (!name.EndsWith(
+                            ".exe",
+                            StringComparison.OrdinalIgnoreCase))
+                        {
+                            name += ".exe";
+                        }
+
+                        currentProcesses.Add(pid);
+
+                        if (_baselineReady &&
+                            !_knownProcesses.Contains(pid))
+                        {
+                            newEvents.Add(new ProcessEvent
+                            {
+                                Timestamp = DateTimeOffset.UtcNow,
+                                Name = name,
+                                ProcessId = pid,
+                                ParentProcessId = 0,
+                                ParentName = "Unknown",
+                                CommandLine = null
+                            });
+                        }
+                    }
+                    catch (System.ComponentModel.Win32Exception)
+                    {
+                        // Windows denied access to a protected process.
+                        // Skip it without interrupting monitoring.
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // Process exited during enumeration.
+                    }
+                }
+            }
+
+            _knownProcesses = currentProcesses;
+            _baselineReady = true;
+        }
+
+        foreach (var process in newEvents)
+        {
+            try
+            {
+                ProcessStarted?.Invoke(this, process);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(
+                    $"Guardian process event error: {ex.Message}");
+            }
+        }
+    }
+
+
+    // ==========================================
+    // PROCESS INFORMATION
+    // ==========================================
 
     private static string GetProcessName(int pid)
     {
@@ -103,49 +258,70 @@ public sealed class ProcessMonitor : IDisposable
     {
         try
         {
-            using var searcher = new ManagementObjectSearcher(
-                "root\\CIMV2",
-                "SELECT CommandLine FROM Win32_Process " +
-                $"WHERE ProcessId = {pid}");
+            using var searcher =
+                new ManagementObjectSearcher(
+                    "root\\CIMV2",
+                    "SELECT CommandLine FROM Win32_Process " +
+                    $"WHERE ProcessId = {pid}");
 
             using var results = searcher.Get();
 
             foreach (ManagementObject item in results)
             {
                 using (item)
+                {
                     return item["CommandLine"]?.ToString();
+                }
             }
         }
         catch (ManagementException)
         {
-            // Process may have exited.
+            // Command line unavailable.
         }
         catch (UnauthorizedAccessException)
         {
-            // Command line may be restricted.
+            // Access restricted.
         }
 
         return null;
     }
 
+    // ==========================================
+    // SHUTDOWN
+    // ==========================================
+
     public void Stop()
     {
-        if (_watcher == null)
+        if (_disposed)
             return;
 
-        var watcher = _watcher;
-        _watcher = null;
+        _disposed = true;
 
-        watcher.EventArrived -= OnProcessStarted;
+        _pollTimer?.Dispose();
+        _pollTimer = null;
 
-        try
+        if (_watcher != null)
         {
-            watcher.Stop();
+            var watcher = _watcher;
+            _watcher = null;
+
+            watcher.EventArrived -= OnWmiProcessStarted;
+
+            try
+            {
+                watcher.Stop();
+            }
+            catch (ManagementException)
+            {
+                // Ignore errors during shutdown.
+            }
+            finally
+            {
+                watcher.Dispose();
+            }
         }
-        finally
-        {
-            watcher.Dispose();
-        }
+
+        Mode = "Stopped";
     }
 
     public void Dispose()

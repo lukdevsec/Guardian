@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Guardian.Core.Models;
 
-namespace Guardian.Detection;
+namespace Guardian.Monitoring.Processes;
 
 public sealed class ProcessTracker
 {

@@ -1,9 +1,9 @@
 
 using Guardian.Core.Detection;
 using Guardian.Core.Models;
-using Guardian.Detection;
 using Guardian.Monitoring.Network;
 using Guardian.Monitoring.Processes;
+using Guardian.Service.IPC;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
@@ -12,18 +12,16 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Guardian.Service.IPC;
 
 namespace Guardian.Service;
 
 public sealed class Worker : BackgroundService
 {
-    private readonly TelemetryState _telemetry;
     private readonly ILogger<Worker> _logger;
+    private readonly TelemetryState _telemetry;
     private readonly ProcessTracker _tracker = new();
-    private readonly object _fileLock = new();
 
-    private ProcessMonitor? _processMonitor;
+    private readonly object _fileLock = new();
 
     private readonly string _logDirectory = Path.Combine(
         Environment.GetFolderPath(
@@ -36,8 +34,8 @@ public sealed class Worker : BackgroundService
     private long _alertCount;
 
     public Worker(
-    ILogger<Worker> logger,
-    TelemetryState telemetry)
+        ILogger<Worker> logger,
+        TelemetryState telemetry)
     {
         _logger = logger;
         _telemetry = telemetry;
@@ -49,57 +47,82 @@ public sealed class Worker : BackgroundService
         Directory.CreateDirectory(_logDirectory);
 
         _logger.LogInformation(
-            "Guardian Security Engine v0.5.2 starting.");
+            "Guardian Security Engine v0.6 starting.");
 
         _logger.LogInformation(
             "Mode: MONITOR ONLY");
 
         _logger.LogInformation(
-            "Log directory: {Path}", _logDirectory);
+            "Log directory: {Path}",
+            _logDirectory);
 
         try
         {
             using var monitor = new ProcessMonitor();
-            _processMonitor = monitor;
 
             monitor.ProcessStarted += OnProcessStarted;
-            monitor.Start();
-            _telemetry.SetMonitoringActive(true);
-
-            _logger.LogInformation(
-                "Windows process monitoring ACTIVE.");
-
-            _logger.LogInformation(
-                "TCP IPv4 monitoring ACTIVE.");
 
             try
             {
+                // Start Windows process monitoring.
+                monitor.Start();
+
+                _logger.LogInformation(
+                    "Process monitoring mode: {Mode}",
+                    monitor.Mode);
+
+                _telemetry.SetMonitoringActive(true);
+
+                _logger.LogInformation(
+                    "Windows process monitoring ACTIVE.");
+
+                _logger.LogInformation(
+                    "TCP IPv4 monitoring ACTIVE.");
+
+                // Run network monitoring and heartbeat.
                 await Task.WhenAll(
                     MonitorNetworkAsync(stoppingToken),
                     HeartbeatAsync(stoppingToken));
             }
             finally
             {
+                // Always mark monitoring inactive on shutdown.
                 _telemetry.SetMonitoringActive(false);
+
                 monitor.ProcessStarted -= OnProcessStarted;
-                monitor.Stop();
-                _processMonitor = null;
+
+                try
+                {
+                    monitor.Stop();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Error stopping process monitor.");
+                }
             }
         }
         catch (OperationCanceledException)
             when (stoppingToken.IsCancellationRequested)
         {
-            // Normal service shutdown.
+            _logger.LogInformation(
+                "Guardian shutdown requested.");
         }
         catch (Exception ex)
         {
+            _telemetry.SetMonitoringActive(false);
+
             _logger.LogCritical(
-                ex, "Guardian monitoring stopped unexpectedly.");
+                ex,
+                "Guardian monitoring stopped unexpectedly.");
 
             throw;
         }
         finally
         {
+            _telemetry.SetMonitoringActive(false);
+
             _logger.LogInformation(
                 "Guardian stopped. Processes: {Processes}, " +
                 "TCP events: {Connections}, Alerts: {Alerts}",
@@ -109,6 +132,10 @@ public sealed class Worker : BackgroundService
         }
     }
 
+    // ==========================================
+    // PROCESS MONITORING
+    // ==========================================
+
     private void OnProcessStarted(
         object? sender,
         ProcessEvent process)
@@ -116,6 +143,7 @@ public sealed class Worker : BackgroundService
         try
         {
             Interlocked.Increment(ref _processCount);
+
             _telemetry.RecordProcess(process.Name);
 
             _logger.LogInformation(
@@ -153,9 +181,14 @@ public sealed class Worker : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(
-                ex, "Error processing process event.");
+                ex,
+                "Error processing Windows process event.");
         }
     }
+
+    // ==========================================
+    // NETWORK MONITORING
+    // ==========================================
 
     private async Task MonitorNetworkAsync(
         CancellationToken token)
@@ -185,6 +218,7 @@ public sealed class Worker : BackgroundService
 
                     currentConnections.Add(key);
 
+                    // Establish initial baseline.
                     if (!initialized ||
                         previousConnections.Contains(key))
                     {
@@ -193,8 +227,10 @@ public sealed class Worker : BackgroundService
 
                     Interlocked.Increment(
                         ref _connectionCount);
+
                     _telemetry.RecordConnection(
-    $"{connection.RemoteAddress}:{connection.RemotePort}");
+                        $"{connection.RemoteAddress}:" +
+                        $"{connection.RemotePort}");
 
                     _logger.LogInformation(
                         "[NETWORK] PID: {Pid} | {Remote}:{Port}",
@@ -213,13 +249,15 @@ public sealed class Worker : BackgroundService
                         connection.RemotePort
                     });
 
+                    // Correlate connection with suspicious process.
                     if (_tracker.TryFind(
                         connection.ProcessId,
                         out var suspicious) &&
                         suspicious is not null)
                     {
                         int score = Math.Min(
-                            100, suspicious.Score + 20);
+                            100,
+                            suspicious.Score + 20);
 
                         string level = score >= 70
                             ? "HIGH"
@@ -239,19 +277,26 @@ public sealed class Worker : BackgroundService
                 }
 
                 previousConnections = currentConnections;
+
                 initialized = true;
             }
             catch (Exception ex)
                 when (ex is not OperationCanceledException)
             {
                 _logger.LogError(
-                    ex, "TCP monitoring error.");
+                    ex,
+                    "TCP monitoring error.");
             }
 
             await Task.Delay(
-                TimeSpan.FromSeconds(2), token);
+                TimeSpan.FromSeconds(2),
+                token);
         }
     }
+
+    // ==========================================
+    // HEARTBEAT
+    // ==========================================
 
     private async Task HeartbeatAsync(
         CancellationToken token)
@@ -266,9 +311,14 @@ public sealed class Worker : BackgroundService
                 Interlocked.Read(ref _alertCount));
 
             await Task.Delay(
-                TimeSpan.FromSeconds(10), token);
+                TimeSpan.FromSeconds(10),
+                token);
         }
     }
+
+    // ==========================================
+    // ALERT MANAGEMENT
+    // ==========================================
 
     private void RegisterAlert(
         string type,
@@ -279,13 +329,18 @@ public sealed class Worker : BackgroundService
         string reason)
     {
         Interlocked.Increment(ref _alertCount);
+
         _telemetry.RecordAlert(
-    $"{level}: {name} - {reason}");
+            $"{level}: {name} - {reason}");
 
         _logger.LogWarning(
             "[ALERT] {Level} | {Name} | PID: {Pid} | " +
             "Score: {Score} | {Reason}",
-            level, name, pid, score, reason);
+            level,
+            name,
+            pid,
+            score,
+            reason);
 
         SaveJson("alerts.jsonl", new
         {
@@ -300,19 +355,27 @@ public sealed class Worker : BackgroundService
         });
     }
 
+    // ==========================================
+    // EVENT LOGGING
+    // ==========================================
+
     private void SaveEvent(object data)
     {
         SaveJson("events.jsonl", data);
     }
 
-    private void SaveJson(string filename, object data)
+    private void SaveJson(
+        string filename,
+        object data)
     {
         try
         {
             string path = Path.Combine(
-                _logDirectory, filename);
+                _logDirectory,
+                filename);
 
-            string json = JsonSerializer.Serialize(data);
+            string json =
+                JsonSerializer.Serialize(data);
 
             lock (_fileLock)
             {
@@ -325,7 +388,9 @@ public sealed class Worker : BackgroundService
             when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.LogError(
-                ex, "Failed to write {Filename}", filename);
+                ex,
+                "Failed to write {Filename}",
+                filename);
         }
     }
 }
