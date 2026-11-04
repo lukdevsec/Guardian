@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Guardian.Desktop (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Guardian.Desktop (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

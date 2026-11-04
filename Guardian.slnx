@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Guardian.Core/Guardian.Core.csproj" Id="b9197e42-6442-4b8c-bc86-2d8e2c85dc77" />
+  <Project Path="Guardian.Desktop/Guardian.Desktop.csproj" Id="94e3fa54-7e61-4756-981b-28904895cb81">
+    <Platform Project="x64" />
+    <Deploy />
+  </Project>
+  <Project Path="Guardian/Guardian.csproj" />
+</Solution>

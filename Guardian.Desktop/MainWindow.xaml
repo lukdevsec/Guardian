@@ -1,0 +1,180 @@
+<Window
+    x:Class="Guardian.Desktop.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Guardian">
+
+    <Grid Background="#172235">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="28" Spacing="22">
+
+                <!-- Header -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="GUARDIAN"
+                                   FontSize="24"
+                                   FontWeight="Bold"
+                                   Foreground="White"/>
+
+                        <TextBlock Text="ENDPOINT SECURITY"
+                                   FontSize="11"
+                                   CharacterSpacing="180"
+                                   Foreground="#98AEC8"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="1"
+                               Text="v0.4"
+                               Foreground="#98AEC8"
+                               VerticalAlignment="Center"/>
+                </Grid>
+
+                <Border Height="1" Background="#34445A"/>
+
+                <!-- Main protection status -->
+                <StackPanel HorizontalAlignment="Center"
+                            Spacing="12">
+
+                    <Border Width="132"
+                            Height="132"
+                            CornerRadius="66"
+                            Background="#263E4B">
+
+                        <StackPanel HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Spacing="2">
+                            <TextBlock Text="🛡"
+                                       FontSize="65"
+                                       HorizontalAlignment="Center"/>
+
+                            <TextBlock Text="GUARDIAN"
+                                       FontSize="9"
+                                       Foreground="#A8E7CE"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock x:Name="StatusText"
+                               Text="Checking telemetry..."
+                               FontSize="22"
+                               FontWeight="SemiBold"
+                               Foreground="White"
+                               TextAlignment="Center"/>
+
+                    <TextBlock x:Name="StatusDescription"
+                               Text="Waiting for Guardian events"
+                               FontSize="13"
+                               Foreground="#A7B8CD"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               MaxWidth="290"/>
+
+                    <Border Background="#34445A"
+                            CornerRadius="16"
+                            Padding="14,7">
+                        <TextBlock Text="DETECTION ONLY · NO BLOCKING"
+                                   FontSize="10"
+                                   Foreground="#E2EAF5"
+                                   HorizontalAlignment="Center"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Live activity -->
+                <Border Background="#233249"
+                        CornerRadius="14"
+                        Padding="18">
+                    <StackPanel Spacing="17">
+
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="System activity"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"/>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="EVENT LOG"
+                                       FontSize="11"
+                                       Foreground="#84DFC1"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*,*,*">
+
+                            <StackPanel Spacing="6">
+                                <TextBlock x:Name="ProcessesText"
+                                           Text="0"
+                                           FontSize="27"
+                                           FontWeight="Bold"
+                                           Foreground="White"/>
+                                <TextBlock Text="Processes"
+                                           FontSize="11"
+                                           Foreground="#A7B8CD"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1"
+                                        Spacing="6">
+                                <TextBlock x:Name="ConnectionsText"
+                                           Text="0"
+                                           FontSize="27"
+                                           FontWeight="Bold"
+                                           Foreground="White"/>
+                                <TextBlock Text="TCP events"
+                                           FontSize="11"
+                                           Foreground="#A7B8CD"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2"
+                                        Spacing="6">
+                                <TextBlock x:Name="AlertsText"
+                                           Text="0"
+                                           FontSize="27"
+                                           FontWeight="Bold"
+                                           Foreground="#F6BD72"/>
+                                <TextBlock Text="Alerts"
+                                           FontSize="11"
+                                           Foreground="#A7B8CD"/>
+                            </StackPanel>
+
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Latest event -->
+                <Border Background="#233249"
+                        CornerRadius="14"
+                        Padding="18">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Latest activity"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"/>
+
+                        <TextBlock x:Name="LatestEventText"
+                                   Text="No events available"
+                                   Foreground="#C7D5E5"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"/>
+
+                        <TextBlock x:Name="UpdatedText"
+                                   Text="Not updated"
+                                   Foreground="#8499B3"
+                                   FontSize="11"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Actions -->
+                <Button Content="Refresh security data"
+                        Click="RefreshButton_Click"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Background="#415D76"
+                        Foreground="White"
+                        Padding="16,13"
+                        CornerRadius="10"/>
+
+                <TextBlock Text="Guardian Security · Local monitoring"
+                           HorizontalAlignment="Center"
+                           FontSize="11"
+                           Foreground="#8094AF"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
