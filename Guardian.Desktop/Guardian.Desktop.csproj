@@ -37,11 +37,13 @@
     <ProjectCapability Include="Msix" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Graphics.Win2D" Version="1.4.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
+    <PackageReference Include="RapidOcrNet" Version="4.2.0" />
     <PackageReference Include="WinUIEx" Version="2.9.3" />
-	<PackageReference Include="Microsoft.Extensions.Hosting"
-                  Version="10.0.14" />
+	<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
   </ItemGroup>
 
   <!--
@@ -62,10 +64,34 @@
   </PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
+		<ProjectReference Include="..\Guardian.Service\Guardian.Service.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Guardian.Service\Guardian.Service.csproj" />
+		<!-- Include RapidOcrNet bundled OCR models in Guardian output. -->
+		<Content Include="$(NuGetPackageRoot)rapidocrnet\4.2.0\models\v5\**\*">
+
+			<Link>models\v5\%(RecursiveDir)%(Filename)%(Extension)</Link>
+
+			<TargetPath>models\v5\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+
+		</Content>
 	</ItemGroup>
+
+	<Target Name="CopyRapidOcrModelsIntoAppX" AfterTargets="Build">
+
+		<ItemGroup>
+			<_RapidOcrModel Include="$(NuGetPackageRoot)rapidocrnet\4.2.0\models\v5\**\*" />
+		</ItemGroup>
+
+		<Copy SourceFiles="@(_RapidOcrModel)" DestinationFiles="@(_RapidOcrModel->'$(OutDir)AppX\models\v5\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+
+		<Message Text="Guardian OCR models copied into AppX." Importance="high" />
+
+	</Target>
+
 </Project>
