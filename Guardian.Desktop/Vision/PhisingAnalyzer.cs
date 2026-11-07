@@ -2,8 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using Guardian.Desktop.Vision;
 
 namespace Guardian.Desktop.Vision;
 
@@ -17,91 +15,40 @@ public sealed record PhishingAnalysisResult(
 
 public sealed class PhishingAnalyzer
 {
+    private static readonly HashSet<string> ShortenerDomains =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "bit.ly",
+            "tinyurl.com",
+            "t.co",
+            "is.gd",
+            "cutt.ly",
+            "shorturl.at"
+        };
+
     private static readonly string[] LoginIndicators =
     {
         "sign in",
         "log in",
         "login",
-        "password",
-        "email address",
-        "verify your account",
-        "zaloguj",
         "zaloguj się",
+        "zaloguj sie",
         "hasło",
-        "konto",
-        "weryfikacja konta",
-        "adres e-mail"
+        "password",
+        "enter your password",
+        "wprowadź hasło",
+        "wprowadz haslo"
     };
 
     private static readonly string[] SuspiciousHostKeywords =
     {
-        "login",
-        "secure",
-        "verify",
-        "account",
-        "password",
-        "update",
-        "wallet",
-        "authentication"
-    };
-
-    private static readonly string[] ShortenerDomains =
-    {
-        "bit.ly",
-        "tinyurl.com",
-        "t.co",
-        "cutt.ly",
-        "is.gd",
-        "shorturl.at"
-    };
-
-    private static readonly (
-        string Brand,
-        string[] Domains
-    )[] KnownBrands =
-    {
-        (
-            "microsoft",
-            new[]
-            {
-                "microsoft.com",
-                "microsoftonline.com",
-                "live.com",
-                "office.com",
-                "outlook.com"
-            }
-        ),
-        (
-            "google",
-            new[]
-            {
-                "google.com",
-                "google.pl"
-            }
-        ),
-        (
-            "paypal",
-            new[]
-            {
-                "paypal.com"
-            }
-        ),
-        (
-            "apple",
-            new[]
-            {
-                "apple.com",
-                "icloud.com"
-            }
-        ),
-        (
-            "amazon",
-            new[]
-            {
-                "amazon.com",
-                "amazon.pl"
-            }
-        )
+        "verify-account",
+        "verify-login",
+        "secure-login",
+        "account-verification",
+        "password-reset",
+        "reset-password",
+        "confirm-account"
     };
 
     public PhishingAnalysisResult Analyze(
@@ -110,185 +57,20 @@ public sealed class PhishingAnalyzer
     {
         pageText ??= string.Empty;
 
-        var urls = urlCandidates
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (urls.Count == 0)
-        {
-            return new PhishingAnalysisResult(
-                0,
-                "UNKNOWN",
-                "No URL candidates were detected.",
-                Array.Empty<string>(),
-                null);
-        }
-
-        bool loginContext = ContainsLoginIndicators(pageText);
+        bool loginContext = LoginIndicators.Any(
+            indicator => pageText.Contains(
+                indicator,
+                StringComparison.OrdinalIgnoreCase));
 
         PhishingAnalysisResult? highestRisk = null;
 
-        foreach (string candidate in urls)
+        foreach (string candidate in urlCandidates ??
+                 Enumerable.Empty<string>())
         {
-            if (!Uri.TryCreate(
-                candidate,
-                UriKind.Absolute,
-                out Uri? uri))
-            {
+            var result = AnalyzeUrl(candidate, loginContext);
+
+            if (result == null)
                 continue;
-            }
-
-            if (uri.Scheme != Uri.UriSchemeHttp &&
-                uri.Scheme != Uri.UriSchemeHttps)
-            {
-                continue;
-            }
-
-            string host = uri.IdnHost.ToLowerInvariant();
-
-            int score = 0;
-
-            var reasons = new List<string>();
-
-            // 1. IP address instead of a domain.
-            if (uri.HostNameType == UriHostNameType.IPv4 ||
-                uri.HostNameType == UriHostNameType.IPv6)
-            {
-                AddFinding(
-                    ref score,
-                    reasons,
-                    35,
-                    "Website uses an IP address instead of a domain.");
-            }
-
-            // 2. Punycode domain.
-            if (host.Contains("xn--", StringComparison.OrdinalIgnoreCase))
-            {
-                AddFinding(
-                    ref score,
-                    reasons,
-                    35,
-                    "Domain contains an internationalized Punycode label.");
-            }
-
-            // 3. User information inside URL.
-            if (!string.IsNullOrEmpty(uri.UserInfo))
-            {
-                AddFinding(
-                    ref score,
-                    reasons,
-                    35,
-                    "URL contains embedded user information.");
-            }
-
-            // 4. HTTP login page.
-            if (loginContext &&
-                uri.Scheme == Uri.UriSchemeHttp)
-            {
-                AddFinding(
-                    ref score,
-                    reasons,
-                    20,
-                    "Login-related content is displayed over HTTP.");
-            }
-
-            // 5. URL shortener.
-            if (ShortenerDomains.Any(domain =>
-                IsHostOrSubdomain(host, domain)))
-            {
-                AddFinding(
-                    ref score,
-                    reasons,
-                    15,
-                    "URL uses a known link-shortening service.");
-            }
-
-            // 6. Excessively nested subdomains.
-            if (host.Split('.').Length >= 5)
-            {
-                AddFinding(
-                    ref score,
-                    reasons,
-                    10,
-                    "Domain contains an unusually high number of labels.");
-            }
-
-            // 7. Suspicious keywords in login-related URLs.
-            if (loginContext &&
-                SuspiciousHostKeywords.Any(keyword =>
-                    host.Contains(
-                        keyword,
-                        StringComparison.OrdinalIgnoreCase)))
-            {
-                AddFinding(
-                    ref score,
-                    reasons,
-                    10,
-                    "Login-related page uses security-themed domain keywords.");
-            }
-
-            // 8. Brand impersonation.
-            if (loginContext)
-            {
-                foreach (var brand in KnownBrands)
-                {
-                    bool brandMentioned =
-                        pageText.Contains(
-                            brand.Brand,
-                            StringComparison.OrdinalIgnoreCase);
-
-                    bool brandInHost =
-                        host.Contains(
-                            brand.Brand,
-                            StringComparison.OrdinalIgnoreCase);
-
-                    bool officialDomain =
-                        brand.Domains.Any(domain =>
-                            IsHostOrSubdomain(host, domain));
-
-                    if ((brandMentioned || brandInHost) &&
-                        !officialDomain)
-                    {
-                        AddFinding(
-                            ref score,
-                            reasons,
-                            35,
-                            $"Possible {brand.Brand} impersonation: " +
-                            "page branding does not match the domain.");
-
-                        break;
-                    }
-                }
-            }
-
-            // 9. Unusually long URL.
-            if (candidate.Length > 120)
-            {
-                AddFinding(
-                    ref score,
-                    reasons,
-                    5,
-                    "URL is unusually long.");
-            }
-
-            score = Math.Clamp(score, 0, 100);
-
-            string level = GetRiskLevel(score);
-
-            string summary = score switch
-            {
-                >= 70 => "Multiple high-risk phishing indicators detected.",
-                >= 40 => "Several suspicious website indicators detected.",
-                >= 20 => "Some potentially suspicious characteristics detected.",
-                _ => "No obvious phishing indicators detected by current rules."
-            };
-
-            var result = new PhishingAnalysisResult(
-                score,
-                level,
-                summary,
-                reasons,
-                candidate);
 
             if (highestRisk == null ||
                 result.Score > highestRisk.Score)
@@ -297,20 +79,196 @@ public sealed class PhishingAnalyzer
             }
         }
 
-        return highestRisk ?? new PhishingAnalysisResult(
-            0,
-            "UNKNOWN",
-            "No valid HTTP or HTTPS URLs could be analyzed.",
-            Array.Empty<string>(),
-            null);
+        return highestRisk ??
+            new PhishingAnalysisResult(
+                0,
+                "UNKNOWN",
+                "No valid website address was available for analysis.",
+                Array.Empty<string>(),
+                null);
     }
 
-    private static bool ContainsLoginIndicators(string text)
+    private static PhishingAnalysisResult? AnalyzeUrl(
+        string candidate,
+        bool loginContext)
     {
-        return LoginIndicators.Any(indicator =>
-            text.Contains(
-                indicator,
-                StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(candidate))
+            return null;
+
+        if (!Uri.TryCreate(
+                candidate.Trim(),
+                UriKind.Absolute,
+                out Uri? uri))
+        {
+            return null;
+        }
+
+        if (uri.Scheme != Uri.UriSchemeHttp &&
+            uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return null;
+        }
+
+        int score = 0;
+        var reasons = new List<string>();
+
+        string host = uri.Host.ToLowerInvariant();
+
+        // ==========================================
+        // 1. IP ADDRESS AS WEBSITE HOST
+        // ==========================================
+
+        if (uri.HostNameType == UriHostNameType.IPv4 ||
+            uri.HostNameType == UriHostNameType.IPv6)
+        {
+            score += 20;
+
+            reasons.Add(
+                "+20: Website uses an IP address instead of a domain.");
+        }
+
+        // ==========================================
+        // 2. URL USERINFO
+        // ==========================================
+
+        if (!string.IsNullOrWhiteSpace(uri.UserInfo))
+        {
+            score += 35;
+
+            reasons.Add(
+                "+35: URL contains user information before the host. " +
+                "This can obscure the actual destination.");
+        }
+
+        // ==========================================
+        // 3. PUNYCODE INDICATOR
+        // ==========================================
+
+        if (host.Split('.').Any(
+            part => part.StartsWith(
+                "xn--",
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            score += 10;
+
+            reasons.Add(
+                "+10: Domain contains an internationalized " +
+                "hostname label requiring additional inspection.");
+        }
+
+        // ==========================================
+        // 4. HTTP WITH LOGIN CONTEXT
+        // ==========================================
+
+        if (uri.Scheme == Uri.UriSchemeHttp &&
+            loginContext)
+        {
+            score += 25;
+
+            reasons.Add(
+                "+25: Login-related content is displayed " +
+                "over an unencrypted HTTP connection.");
+        }
+
+        // ==========================================
+        // 5. URL SHORTENERS
+        // ==========================================
+
+        if (ShortenerDomains.Any(
+            domain => IsHostOrSubdomain(host, domain)))
+        {
+            score += 10;
+
+            reasons.Add(
+                "+10: URL shortening service hides " +
+                "the final destination.");
+        }
+
+        // ==========================================
+        // 6. EXCESSIVE SUBDOMAINS
+        // ==========================================
+
+        int labelCount = host.Split(
+            '.',
+            StringSplitOptions.RemoveEmptyEntries).Length;
+
+        if (labelCount >= 6)
+        {
+            score += 10;
+
+            reasons.Add(
+                "+10: Unusually deep hostname structure.");
+        }
+
+        // ==========================================
+        // 7. SUSPICIOUS HOST KEYWORDS
+        // ==========================================
+
+        if (loginContext &&
+            SuspiciousHostKeywords.Any(
+                keyword => host.Contains(
+                    keyword,
+                    StringComparison.OrdinalIgnoreCase)))
+        {
+            score += 10;
+
+            reasons.Add(
+                "+10: Domain contains account-verification " +
+                "or login-related wording.");
+        }
+
+        // ==========================================
+        // IMPORTANT: BRAND IMPERSONATION
+        // ==========================================
+
+        // Brand mismatch scoring is deliberately disabled.
+        //
+        // OCR may contain brand names in:
+        // - News articles
+        // - Advertisements
+        // - Browser interface elements
+        // - Footer links
+        // - Unrelated page content
+        //
+        // A brand mention alone is NOT evidence
+        // of phishing or impersonation.
+        //
+        // Future AI Context Analyzer will evaluate
+        // page purpose, branding and login context
+        // with stronger supporting evidence.
+
+        score = Math.Clamp(score, 0, 100);
+
+        string riskLevel = score switch
+        {
+            >= 70 => "CRITICAL",
+            >= 40 => "HIGH",
+            >= 20 => "MEDIUM",
+            _ => "LOW"
+        };
+
+        string summary = riskLevel switch
+        {
+            "CRITICAL" =>
+                "Multiple strong suspicious URL indicators detected.",
+
+            "HIGH" =>
+                "Several suspicious URL characteristics detected.",
+
+            "MEDIUM" =>
+                "Potentially suspicious URL characteristics detected.",
+
+            _ =>
+                "No significant suspicious URL indicators detected " +
+                "by the current heuristic rules."
+        };
+
+        return new PhishingAnalysisResult(
+            score,
+            riskLevel,
+            summary,
+            reasons,
+            uri.AbsoluteUri);
     }
 
     private static bool IsHostOrSubdomain(
@@ -324,26 +282,5 @@ public sealed class PhishingAnalyzer
                host.EndsWith(
                    "." + domain,
                    StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static void AddFinding(
-        ref int score,
-        List<string> reasons,
-        int points,
-        string reason)
-    {
-        score += points;
-        reasons.Add($"+{points}: {reason}");
-    }
-
-    private static string GetRiskLevel(int score)
-    {
-        return score switch
-        {
-            >= 70 => "CRITICAL",
-            >= 40 => "HIGH",
-            >= 20 => "MEDIUM",
-            _ => "LOW"
-        };
     }
 }

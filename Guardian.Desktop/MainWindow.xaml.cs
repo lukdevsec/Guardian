@@ -1,9 +1,15 @@
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
+using System.IO;
+using Guardian.Desktop.UI;
 
-using Guardian.Service.IPC;
+using Guardian.Desktop.Notifications;
 using Guardian.Desktop.Vision;
+using Guardian.Service.IPC;
 
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -20,36 +26,87 @@ namespace Guardian.Desktop;
 
 public sealed partial class MainWindow : Window
 {
+    // CORE
+
     private readonly TelemetryState _telemetry;
-
-    private readonly BrowserAddressReader _browserAddressReader = new();
-
     private readonly DispatcherTimer _refreshTimer;
-
     private readonly WindowManager _windowManager;
 
+    // VISION
+
     private readonly ScreenCaptureManager _screenCapture = new();
-
+    private readonly ContinuousScreenMonitor _continuousMonitor = new();
+    private readonly BrowserAddressReader _browserAddressReader = new();
     private readonly UrlExtractor _urlExtractor = new();
-
     private readonly PhishingAnalyzer _phishingAnalyzer = new();
+
+
+    private async void EndpointInfoButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (Content is FrameworkElement root)
+        {
+            await GuardianHelp.ShowEndpointAsync(root.XamlRoot);
+        }
+    }
+
+    private async void VisionInfoButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (Content is FrameworkElement root)
+        {
+            await GuardianHelp.ShowVisionAsync(root.XamlRoot);
+        }
+    }
+
 
     private ScreenTextRecognizer? _textRecognizer;
 
+    // NOTIFICATIONS
+
+    private readonly NotificationService _notifications;
+
+    // REPORTS
+
+    private AnalysisReport? _latestReport;
+    private AnalysisReport? _latestAlertReport;
+
+    private AnalysisDetailsWindow? _detailsWindow;
+
+    private readonly List<AnalysisReport> _sessionHistory = new();
+
+    // STATE
+
     private bool _visionBusy;
-    private bool _visionDetailsExpanded;
+    private bool _continuousStarting;
     private bool _allowClose;
+
+    private string? _lastContinuousFingerprint;
 
     public MainWindow(TelemetryState telemetry)
     {
         InitializeComponent();
+        string iconPath = Path.Combine(
+    AppContext.BaseDirectory,
+    "Assets",
+    "GuardianIcon.ico");
+
+        if (File.Exists(iconPath))
+        {
+            AppWindow.SetIcon(iconPath);
+        }
 
         _telemetry = telemetry;
 
-        // Window configuration.
+        Title = "Guardian";
         AppWindow.Resize(new SizeInt32(390, 710));
 
-        // System tray.
+        // ======================================
+        // SYSTEM TRAY
+        // ======================================
+
         _windowManager = WindowManager.Get(this);
 
         _windowManager.IsVisibleInTray = true;
@@ -59,45 +116,57 @@ public sealed partial class MainWindow : Window
             ShowGuardianWindow();
         };
 
-        // Tray context menu.
         _windowManager.TrayIconContextMenu += (_, e) =>
         {
             var menu = new MenuFlyout();
 
-            var openItem = new MenuFlyoutItem
+            var open = new MenuFlyoutItem
             {
                 Text = "Open Guardian"
             };
 
-            openItem.Click += (_, _) =>
-            {
-                ShowGuardianWindow();
-            };
+            open.Click += (_, _) => ShowGuardianWindow();
 
-            var exitItem = new MenuFlyoutItem
+            var exit = new MenuFlyoutItem
             {
                 Text = "Exit Guardian"
             };
 
-            exitItem.Click += async (_, _) =>
+            exit.Click += async (_, _) =>
             {
-                _allowClose = true;
-                _refreshTimer.Stop();
+                try
+                {
+                    ContinuousVisionButton.IsEnabled = false;
 
-                _windowManager.IsVisibleInTray = false;
+                    await _continuousMonitor.StopAsync();
 
-                await ((App)Application.Current)
-                    .ShutdownAsync();
+                    _allowClose = true;
+
+                    _refreshTimer.Stop();
+
+                    _notifications.Dispose();
+
+                    _windowManager.IsVisibleInTray = false;
+
+                    _detailsWindow?.Close();
+
+                    await ((App)Application.Current)
+                        .ShutdownAsync();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(
+                        $"Guardian shutdown error: {ex}");
+                }
             };
 
-            menu.Items.Add(openItem);
+            menu.Items.Add(open);
             menu.Items.Add(new MenuFlyoutSeparator());
-            menu.Items.Add(exitItem);
+            menu.Items.Add(exit);
 
             e.Flyout = menu;
         };
 
-        // X hides the window instead of exiting.
         AppWindow.Closing += (_, e) =>
         {
             if (!_allowClose)
@@ -109,7 +178,10 @@ public sealed partial class MainWindow : Window
 
         PositionBottomRight();
 
-        // Live telemetry refresh.
+        // ======================================
+        // TELEMETRY
+        // ======================================
+
         _refreshTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(500)
@@ -118,32 +190,62 @@ public sealed partial class MainWindow : Window
         _refreshTimer.Tick += (_, _) =>
         {
             RefreshData();
+            RefreshContinuousMonitoringStatus();
         };
 
         _refreshTimer.Start();
 
         Closed += OnWindowClosed;
 
-        RefreshData();
+        // ======================================
+        // NOTIFICATIONS
+        // ======================================
 
-        // Initial Vision state.
-        VisionStatusText.Text = "Screen analysis inactive";
-        VisionDomainText.Text = "No website analyzed";
+        _notifications = new NotificationService();
 
-        VisionRiskBadgeText.Text = "NOT ANALYZED";
-        VisionScoreText.Text = "--/100";
+        _notifications.NotificationClicked += () =>
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                ShowGuardianWindow();
 
-        VisionSummaryText.Text =
-            "Waiting for website analysis.";
+                OpenAnalysisDetails(
+                    _latestAlertReport ?? _latestReport);
+            });
+        };
 
-        VisionUrlsText.Text = "No URLs detected.";
-        VisionReasonsText.Text = "No analysis available.";
-        VisionOcrText.Text = "No OCR data.";
+        NotificationStatusText.Text =
+            _notifications.IsAvailable
+                ? "Windows notifications initialized"
+                : "Notifications unavailable - check MSIX registration";
+
+        // ======================================
+        // INITIAL UI
+        // ======================================
+
+        ContinuousVisionButton.Content =
+            "Start continuous monitoring";
+
+        ContinuousVisionStatusText.Text =
+            "Continuous monitoring inactive";
 
         VisionDetailsButton.IsEnabled = false;
 
-        VisionDetailsPanel.Visibility =
-            Visibility.Collapsed;
+        VisionStatusText.Text =
+            "No website analyzed";
+
+        VisionDomainText.Text =
+            "No active website";
+
+        VisionRiskBadgeText.Text =
+            "UNKNOWN";
+
+        VisionScoreText.Text = "--/100";
+
+        VisionSummaryText.Text =
+            "Start a screen analysis to view security findings.";
+
+        RefreshData();
     }
 
     // ==========================================
@@ -155,7 +257,6 @@ public sealed partial class MainWindow : Window
         PositionBottomRight();
 
         AppWindow.Show();
-
         Activate();
     }
 
@@ -176,25 +277,20 @@ public sealed partial class MainWindow : Window
             if (displayArea == null)
                 return;
 
-            var workArea = displayArea.WorkArea;
+            var area = displayArea.WorkArea;
             var size = AppWindow.Size;
 
-            int x = workArea.X +
-                    workArea.Width -
-                    size.Width - 16;
-
-            int y = workArea.Y +
-                    workArea.Height -
-                    size.Height - 16;
+            int x = area.X + area.Width - size.Width - 16;
+            int y = area.Y + area.Height - size.Height - 16;
 
             AppWindow.Move(new PointInt32(
-                Math.Max(workArea.X, x),
-                Math.Max(workArea.Y, y)));
+                Math.Max(area.X, x),
+                Math.Max(area.Y, y)));
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine(
-                $"Guardian positioning error: {ex.Message}");
+            Debug.WriteLine(
+                $"Guardian position error: {ex.Message}");
         }
     }
 
@@ -221,7 +317,7 @@ public sealed partial class MainWindow : Window
                 snapshot.LastEvent;
 
             UpdatedText.Text =
-                $"Live update: {DateTime.Now:HH:mm:ss}";
+                $"Updated: {DateTime.Now:HH:mm:ss}";
 
             if (snapshot.ServiceStatus == "Running")
             {
@@ -231,7 +327,7 @@ public sealed partial class MainWindow : Window
                     new SolidColorBrush(Colors.LightGreen);
 
                 StatusDescription.Text =
-                    "Guardian monitoring engine is running. " +
+                    "Process and network monitoring active. " +
                     "Detection only; no automatic blocking.";
             }
             else
@@ -247,7 +343,8 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Monitoring unavailable";
+            StatusText.Text =
+                "Monitoring unavailable";
 
             StatusText.Foreground =
                 new SolidColorBrush(Colors.OrangeRed);
@@ -264,25 +361,427 @@ public sealed partial class MainWindow : Window
     }
 
     // ==========================================
-    // VISION DETAILS
+    // CONTINUOUS MONITORING HEALTH
     // ==========================================
 
-    private void VisionDetailsButton_Click(
+    private void RefreshContinuousMonitoringStatus()
+    {
+        if (!_continuousMonitor.IsRunning)
+            return;
+
+        DateTime? lastFrame =
+            _continuousMonitor.LastFrameReceivedUtc;
+
+        DateTime? lastAnalysis =
+            _continuousMonitor.LastAnalysisCompletedUtc;
+
+        if (!lastFrame.HasValue)
+        {
+            ContinuousVisionStatusText.Text =
+                "Waiting for first capture frame...";
+            return;
+        }
+
+        TimeSpan age =
+            DateTime.UtcNow - lastFrame.Value;
+
+        string last = lastAnalysis.HasValue
+            ? lastAnalysis.Value.ToLocalTime()
+                .ToString("HH:mm:ss")
+            : "Pending";
+
+        if (age.TotalSeconds > 15)
+        {
+            ContinuousVisionStatusText.Text =
+                $"No recent frames · Last analysis: {last}";
+
+            // An old LOW result must not appear current.
+            VisionStatusText.Text =
+                "Live assessment may be outdated";
+
+            VisionStatusText.Foreground =
+                new SolidColorBrush(Colors.Orange);
+
+            return;
+        }
+
+        ContinuousVisionStatusText.Text =
+            $"Capture active · Last analysis: {last}";
+    }
+
+    // ==========================================
+    // MANUAL VISION
+    // ==========================================
+
+    private async void AnalyzeScreenButton_Click(
         object sender,
         RoutedEventArgs e)
     {
-        _visionDetailsExpanded =
-            !_visionDetailsExpanded;
+        if (_visionBusy ||
+            _continuousStarting ||
+            _continuousMonitor.IsRunning)
+        {
+            return;
+        }
 
-        VisionDetailsPanel.Visibility =
-            _visionDetailsExpanded
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+        _visionBusy = true;
 
-        VisionDetailsButton.Content =
-            _visionDetailsExpanded
-                ? "Hide analysis details"
-                : "View analysis details";
+        Button? button = sender as Button;
+
+        if (button != null)
+            button.IsEnabled = false;
+
+        try
+        {
+            VisionStatusText.Text =
+                "Select a browser window...";
+
+            using SoftwareBitmap? bitmap =
+                await _screenCapture.CaptureSingleFrameAsync(this);
+
+            if (bitmap == null)
+            {
+                VisionStatusText.Text =
+                    "Capture cancelled";
+                return;
+            }
+
+            VisionStatusText.Text =
+                "Analyzing selected window...";
+
+            var address = await _browserAddressReader.ReadAsync(
+                _screenCapture.LastCapturedWindowTitle);
+
+            _textRecognizer ??= new ScreenTextRecognizer();
+
+            string ocr =
+                await _textRecognizer.RecognizeAsync(bitmap);
+
+            var report = BuildReport(
+                "Manual capture",
+                address,
+                ocr);
+
+            PublishReport(report);
+        }
+        catch (Exception ex)
+        {
+            DisplayVisionError(ex);
+        }
+        finally
+        {
+            _visionBusy = false;
+
+            if (button != null)
+                button.IsEnabled = true;
+        }
+    }
+
+    // ==========================================
+    // CONTINUOUS VISION START / STOP
+    // ==========================================
+
+    private async void ContinuousVisionButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (_continuousStarting || _visionBusy)
+            return;
+
+        _continuousStarting = true;
+        ContinuousVisionButton.IsEnabled = false;
+
+        try
+        {
+            if (_continuousMonitor.IsRunning)
+            {
+                ContinuousVisionStatusText.Text =
+                    "Stopping monitoring...";
+
+                await _continuousMonitor.StopAsync();
+
+                _lastContinuousFingerprint = null;
+
+                ContinuousVisionButton.Content =
+                    "Start continuous monitoring";
+
+                ContinuousVisionButton.Background =
+                    new SolidColorBrush(
+                        ColorHelper.FromArgb(
+                            255, 36, 122, 104));
+
+                ContinuousVisionStatusText.Text =
+                    "Continuous monitoring stopped";
+
+                VisionStatusText.Text =
+                    "Monitoring stopped - last assessment";
+
+                VisionStatusText.Foreground =
+                    new SolidColorBrush(Colors.Orange);
+
+                return;
+            }
+
+            _lastContinuousFingerprint = null;
+
+            ContinuousVisionStatusText.Text =
+                "Select a browser window...";
+
+            bool started =
+                await _continuousMonitor.StartAsync(
+                    this,
+                    AnalyzeContinuousFrameAsync);
+
+            if (!started)
+            {
+                ContinuousVisionStatusText.Text =
+                    "Window selection cancelled";
+                return;
+            }
+
+            ContinuousVisionButton.Content =
+                "Stop continuous monitoring";
+
+            ContinuousVisionButton.Background =
+                new SolidColorBrush(
+                    ColorHelper.FromArgb(
+                        255, 145, 60, 55));
+
+            ContinuousVisionStatusText.Text =
+                "Continuous monitoring started";
+
+            VisionStatusText.Text =
+                "Waiting for live assessment...";
+
+            VisionStatusText.Foreground =
+                new SolidColorBrush(Colors.Orange);
+        }
+        catch (Exception ex)
+        {
+            ContinuousVisionStatusText.Text =
+                $"Monitoring error: {ex.Message}";
+
+            Debug.WriteLine(ex);
+        }
+        finally
+        {
+            _continuousStarting = false;
+            ContinuousVisionButton.IsEnabled = true;
+        }
+    }
+
+    // ==========================================
+    // CONTINUOUS FRAME DISPATCH
+    // ==========================================
+
+    private Task AnalyzeContinuousFrameAsync(
+        SoftwareBitmap bitmap)
+    {
+        var completion =
+            new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        bool queued = DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                if (_continuousMonitor.IsRunning)
+                {
+                    await AnalyzeContinuousFrameOnUiAsync(bitmap);
+                }
+
+                completion.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(
+                    $"Guardian continuous frame error: {ex}");
+
+                completion.TrySetException(ex);
+            }
+        });
+
+        if (!queued)
+        {
+            completion.TrySetException(
+                new InvalidOperationException(
+                    "UI dispatcher unavailable."));
+        }
+
+        return completion.Task;
+    }
+
+    // ==========================================
+    // CONTINUOUS ANALYSIS
+    // ==========================================
+
+    private async Task AnalyzeContinuousFrameOnUiAsync(
+        SoftwareBitmap bitmap)
+    {
+        var address =
+            await _browserAddressReader.ReadAsync(
+                _continuousMonitor.SelectedWindowTitle);
+
+        if (!_continuousMonitor.IsRunning)
+            return;
+
+        if (!address.Success ||
+            string.IsNullOrWhiteSpace(address.Url))
+        {
+            SetUnknownAssessment(
+                "Browser address could not be verified.");
+
+            _lastContinuousFingerprint = null;
+            return;
+        }
+
+        _textRecognizer ??= new ScreenTextRecognizer();
+
+        string ocr =
+            await _textRecognizer.RecognizeAsync(bitmap);
+
+        if (!_continuousMonitor.IsRunning)
+            return;
+
+        string fingerprint =
+            address.Url + "|" + ocr;
+
+        if (fingerprint == _lastContinuousFingerprint)
+            return;
+
+        _lastContinuousFingerprint = fingerprint;
+
+        var report = BuildReport(
+            "Continuous monitoring",
+            address,
+            ocr);
+
+        PublishReport(report);
+    }
+
+    // ==========================================
+    // BUILD ANALYSIS REPORT
+    // ==========================================
+
+    private AnalysisReport BuildReport(
+        string source,
+        BrowserAddressResult address,
+        string ocrText)
+    {
+        var ocrUrls = _urlExtractor.Extract(ocrText);
+
+        string domain = "Unknown";
+
+        if (Uri.TryCreate(
+            address.Url,
+            UriKind.Absolute,
+            out Uri? uri))
+        {
+            domain = uri.IdnHost;
+        }
+
+        if (!address.Success ||
+            string.IsNullOrWhiteSpace(address.Url))
+        {
+            return new AnalysisReport(
+                DateTime.Now,
+                source,
+                address.Browser,
+                domain,
+                null,
+                ocrUrls.ToArray(),
+                "UNKNOWN",
+                null,
+                "Browser address unavailable. " +
+                "A reliable risk assessment could not be performed.",
+                new[]
+                {
+                    address.Message
+                },
+                ocrText);
+        }
+
+        if (string.IsNullOrWhiteSpace(ocrText))
+        {
+            return new AnalysisReport(
+                DateTime.Now,
+                source,
+                address.Browser,
+                domain,
+                address.Url,
+                ocrUrls.ToArray(),
+                "UNKNOWN",
+                null,
+                "No readable page content was detected.",
+                new[]
+                {
+                    "OCR returned no readable text."
+                },
+                ocrText);
+        }
+
+        var result = _phishingAnalyzer.Analyze(
+            ocrText,
+            new[] { address.Url });
+
+        return new AnalysisReport(
+            DateTime.Now,
+            source,
+            address.Browser,
+            domain,
+            address.Url,
+            ocrUrls.ToArray(),
+            result.RiskLevel,
+            result.Score,
+            result.Summary,
+            result.Reasons.ToArray(),
+            ocrText);
+    }
+
+    // ==========================================
+    // PUBLISH ANALYSIS
+    // ==========================================
+
+    private void PublishReport(AnalysisReport report)
+    {
+        _latestReport = report;
+
+        _sessionHistory.Add(report);
+
+        // Limit retained text data in memory.
+        if (_sessionHistory.Count > 50)
+            _sessionHistory.RemoveAt(0);
+
+        VisionDomainText.Text = report.Domain;
+
+        VisionScoreText.Text =
+            report.RiskScore.HasValue
+                ? $"{report.RiskScore.Value}/100"
+                : "--/100";
+
+        VisionSummaryText.Text =
+            report.Summary +
+            "\n\nPreliminary heuristic assessment.";
+
+        UpdateRiskPresentation(report.RiskLevel);
+
+        VisionDetailsButton.IsEnabled = true;
+
+        if (report.RiskLevel == "HIGH" ||
+            report.RiskLevel == "CRITICAL")
+        {
+            _latestAlertReport = report;
+
+            bool sent =
+                _notifications.SendThreatNotification(report);
+
+            if (sent)
+            {
+                Debug.WriteLine(
+                    $"Guardian security notification: " +
+                    $"{report.Domain} ({report.RiskLevel})");
+            }
+        }
     }
 
     // ==========================================
@@ -292,287 +791,178 @@ public sealed partial class MainWindow : Window
     private void UpdateRiskPresentation(
         string riskLevel)
     {
+        VisionRiskBadgeText.Text = riskLevel;
+
         switch (riskLevel)
         {
             case "CRITICAL":
-
-                VisionRiskBadge.Background =
-                    new SolidColorBrush(
-                        ColorHelper.FromArgb(
-                            255, 125, 35, 42));
-
-                VisionStatusText.Text =
-                    "Critical threat indicators detected";
-
-                VisionStatusText.Foreground =
-                    new SolidColorBrush(Colors.OrangeRed);
-
+                SetRiskAppearance(
+                    "Critical suspicious indicators",
+                    155, 42, 52,
+                    Colors.OrangeRed);
                 break;
 
             case "HIGH":
-
-                VisionRiskBadge.Background =
-                    new SolidColorBrush(
-                        ColorHelper.FromArgb(
-                            255, 125, 65, 35));
-
-                VisionStatusText.Text =
-                    "Suspicious website indicators";
-
-                VisionStatusText.Foreground =
-                    new SolidColorBrush(Colors.Orange);
-
+                SetRiskAppearance(
+                    "Suspicious website indicators",
+                    155, 73, 36,
+                    Colors.Orange);
                 break;
 
             case "MEDIUM":
-
-                VisionRiskBadge.Background =
-                    new SolidColorBrush(
-                        ColorHelper.FromArgb(
-                            255, 115, 95, 40));
-
-                VisionStatusText.Text =
-                    "Potentially suspicious content";
-
-                VisionStatusText.Foreground =
-                    new SolidColorBrush(Colors.Orange);
-
+                SetRiskAppearance(
+                    "Potentially suspicious content",
+                    135, 107, 38,
+                    Colors.Orange);
                 break;
 
             case "LOW":
-
-                VisionRiskBadge.Background =
-                    new SolidColorBrush(
-                        ColorHelper.FromArgb(
-                            255, 35, 105, 78));
-
-                VisionStatusText.Text =
-                    "No suspicious indicators detected";
-
-                VisionStatusText.Foreground =
-                    new SolidColorBrush(Colors.LightGreen);
-
+                SetRiskAppearance(
+                    "No suspicious indicators detected",
+                    31, 111, 82,
+                    Colors.LightGreen);
                 break;
 
             default:
-
-                VisionRiskBadge.Background =
-                    new SolidColorBrush(
-                        ColorHelper.FromArgb(
-                            255, 65, 75, 90));
-
-                VisionStatusText.Text =
-                    "Analysis incomplete";
-
-                VisionStatusText.Foreground =
-                    new SolidColorBrush(Colors.Orange);
-
+                SetRiskAppearance(
+                    "Analysis unavailable",
+                    68, 80, 99,
+                    Colors.Orange);
                 break;
         }
+    }
 
-        VisionRiskBadgeText.Text = riskLevel;
+    private void SetRiskAppearance(
+        string status,
+        byte r,
+        byte g,
+        byte b,
+        Windows.UI.Color foreground)
+    {
+        VisionStatusText.Text = status;
+
+        VisionStatusText.Foreground =
+            new SolidColorBrush(foreground);
+
+        VisionRiskBadge.Background =
+            new SolidColorBrush(
+                ColorHelper.FromArgb(255, r, g, b));
     }
 
     // ==========================================
-    // GUARDIAN VISION ANALYSIS
+    // SEPARATE ANALYSIS WINDOW
     // ==========================================
 
-
-    private async void AnalyzeScreenButton_Click(
+    private void VisionDetailsButton_Click(
         object sender,
         RoutedEventArgs e)
     {
-        if (_visionBusy)
+        OpenAnalysisDetails(_latestReport);
+    }
+
+    private void OpenAnalysisDetails(
+        AnalysisReport? report)
+    {
+        if (report == null)
             return;
-
-        _visionBusy = true;
-
-        Button? actionButton = sender as Button;
-
-        if (actionButton != null)
-            actionButton.IsEnabled = false;
-
-        VisionDetailsPanel.Visibility = Visibility.Collapsed;
-        _visionDetailsExpanded = false;
-
-        VisionDetailsButton.Content = "View analysis details";
-        VisionDetailsButton.IsEnabled = false;
 
         try
         {
-            VisionStatusText.Text = "Waiting for selection...";
-            VisionDomainText.Text = "Selecting browser...";
-            VisionRiskBadgeText.Text = "ANALYZING";
-            VisionScoreText.Text = "--/100";
+            // Recreate the details window for the selected
+            // report so that its content is always consistent.
+            _detailsWindow?.Close();
 
-            VisionSummaryText.Text = "Capturing browser window...";
+            var window =
+                new AnalysisDetailsWindow(report);
 
-            using SoftwareBitmap? bitmap =
-                await _screenCapture.CaptureSingleFrameAsync(this);
+            _detailsWindow = window;
 
-            if (bitmap == null)
+            window.Closed += (_, _) =>
             {
-                VisionStatusText.Text = "Capture cancelled";
-                VisionDomainText.Text = "No website analyzed";
-                VisionSummaryText.Text = "No window was selected.";
+                if (ReferenceEquals(_detailsWindow, window))
+                    _detailsWindow = null;
+            };
 
-                UpdateRiskPresentation("UNKNOWN");
-                return;
-            }
-
-            // 1. Read actual browser address using UI Automation.
-            VisionStatusText.Text = "Reading browser address...";
-
-            var browserAddress =
-                await _browserAddressReader.ReadAsync(
-                    _screenCapture.LastCapturedWindowTitle);
-
-            // 2. OCR page content.
-            VisionStatusText.Text = "Running local OCR...";
-
-            _textRecognizer ??= new ScreenTextRecognizer();
-
-            string extractedText =
-                await _textRecognizer.RecognizeAsync(bitmap);
-
-            // 3. Extract OCR URL candidates for reference only.
-            var detectedUrls =
-                _urlExtractor.Extract(extractedText);
-
-            // 4. Only trust the browser address as the active URL.
-            VisionDomainText.Text =
-                browserAddress.Success &&
-                Uri.TryCreate(
-                    browserAddress.Url,
-                    UriKind.Absolute,
-                    out Uri? actualUri)
-                    ? actualUri.IdnHost
-                    : "Active address unavailable";
-
-            if (!browserAddress.Success ||
-                string.IsNullOrWhiteSpace(browserAddress.Url))
-            {
-                VisionStatusText.Text =
-                    "Address could not be verified";
-
-                VisionRiskBadgeText.Text = "UNKNOWN";
-                VisionScoreText.Text = "--/100";
-
-                VisionSummaryText.Text =
-                    browserAddress.Message +
-                    "\n\nOCR URL candidates are not treated as the active website address.";
-
-                VisionUrlsText.Text =
-                    "BROWSER ADDRESS:\nUnavailable\n\n" +
-                    "OCR URL CANDIDATES (unverified):\n" +
-                    (detectedUrls.Count == 0
-                        ? "None detected."
-                        : string.Join(
-                            Environment.NewLine,
-                            detectedUrls));
-
-                VisionReasonsText.Text =
-                    "A reliable active browser address was not available. " +
-                    "Domain-based phishing assessment was skipped.";
-
-                VisionOcrText.Text =
-                    LimitText(extractedText, 5000);
-
-                UpdateRiskPresentation("UNKNOWN");
-
-                VisionDetailsButton.IsEnabled = true;
-
-                return;
-            }
-
-            // 5. Analyze ONLY the actual browser address.
-            var result = _phishingAnalyzer.Analyze(
-                extractedText,
-                new[] { browserAddress.Url });
-
-            VisionUrlsText.Text =
-                "ACTIVE BROWSER ADDRESS (UI AUTOMATION):\n" +
-                browserAddress.Url +
-                "\n\nOCR URL CANDIDATES (unverified):\n" +
-                (detectedUrls.Count == 0
-                    ? "None detected."
-                    : string.Join(
-                        Environment.NewLine,
-                        detectedUrls));
-
-            // 6. Risk assessment.
-            VisionScoreText.Text =
-                $"{result.Score}/100";
-
-            VisionSummaryText.Text =
-                result.Summary +
-                "\n\nSource: browser address bar + local OCR." +
-                "\nHeuristic screening only; not a safety guarantee.";
-
-            UpdateRiskPresentation(result.RiskLevel);
-
-            // 7. Detailed reasons.
-            VisionReasonsText.Text =
-                result.Reasons.Count == 0
-                    ? "No suspicious indicators detected by current rules."
-                    : string.Join(
-                        Environment.NewLine,
-                        result.Reasons.Select(
-                            reason => "• " + reason));
-
-            VisionOcrText.Text =
-                LimitText(extractedText, 5000);
-
-            VisionDetailsButton.IsEnabled = true;
-
-            System.Diagnostics.Debug.WriteLine(
-                $"Guardian browser: {browserAddress.Browser} | " +
-                $"URL: {browserAddress.Url} | " +
-                $"Risk: {result.RiskLevel} | " +
-                $"Score: {result.Score}/100");
+            window.Activate();
         }
         catch (Exception ex)
         {
-            VisionStatusText.Text = "Analysis failed";
-            VisionDomainText.Text = "Analysis unavailable";
-
-            VisionSummaryText.Text = ex.Message;
-
-            UpdateRiskPresentation("UNKNOWN");
-
-            System.Diagnostics.Debug.WriteLine(
-                $"Guardian Vision error: {ex}");
-        }
-        finally
-        {
-            _visionBusy = false;
-
-            if (actionButton != null)
-                actionButton.IsEnabled = true;
+            Debug.WriteLine(
+                $"Guardian details window error: {ex}");
         }
     }
 
-
     // ==========================================
-    // TEXT HELPERS
+    // TEST WINDOWS NOTIFICATION
     // ==========================================
 
-    private static string LimitText(
-        string text,
-        int maxLength)
+    private void TestNotificationButton_Click(
+        object sender,
+        RoutedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(text))
-            return "No readable text detected.";
+        if (!_notifications.IsAvailable)
+        {
+            NotificationStatusText.Text =
+                "Notification service unavailable. Check MSIX manifest.";
+            return;
+        }
 
-        if (text.Length <= maxLength)
-            return text;
+        // A synthetic report only.
+        // No suspicious website is opened.
+        _latestAlertReport = new AnalysisReport(
+            DateTime.Now,
+            "Notification test",
+            "Guardian",
+            "127.0.0.1",
+            "http://127.0.0.1/login",
+            Array.Empty<string>(),
+            "HIGH",
+            45,
+            "Synthetic test alert - no real threat detected.",
+            new[]
+            {
+                "+20: Local IP address used as website host.",
+                "+25: Login context over HTTP."
+            },
+            "Synthetic test content. No screenshot was captured.");
 
-        return text[..maxLength] +
-               "\n\n[Output truncated]";
+        bool sent = _notifications.SendTestNotification();
+
+        NotificationStatusText.Text = sent
+            ? "Test notification submitted to Windows."
+            : "Could not submit test notification.";
     }
 
     // ==========================================
-    // APPLICATION SHUTDOWN
+    // UNKNOWN / ERRORS
+    // ==========================================
+
+    private void SetUnknownAssessment(
+        string message)
+    {
+        VisionDomainText.Text = "Address unavailable";
+        VisionScoreText.Text = "--/100";
+
+        UpdateRiskPresentation("UNKNOWN");
+
+        VisionSummaryText.Text = message;
+
+        // Prevent opening an outdated report.
+        _latestReport = null;
+        VisionDetailsButton.IsEnabled = false;
+    }
+
+    private void DisplayVisionError(Exception ex)
+    {
+        Debug.WriteLine(
+            $"Guardian Vision error: {ex}");
+
+        SetUnknownAssessment(
+            "Analysis failed: " + ex.Message);
+    }
+
+    // ==========================================
+    // WINDOW CLOSED
     // ==========================================
 
     private void OnWindowClosed(
@@ -582,7 +972,57 @@ public sealed partial class MainWindow : Window
         _refreshTimer.Stop();
 
         _windowManager.IsVisibleInTray = false;
-
         _windowManager.Dispose();
+
+        _notifications.Dispose();
     }
+
+    private async void NotificationInfoButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (Content is not FrameworkElement root)
+            return;
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = root.XamlRoot,
+
+            Title = "Security Notifications",
+
+            Content =
+                "GUARDIAN SECURITY NOTIFICATIONS\n\n" +
+
+                "Guardian automatically sends Windows notifications " +
+                "when a website is classified as HIGH or CRITICAL risk.\n\n" +
+
+                "RISK LEVELS\n\n" +
+                "LOW (0-19): No significant suspicious indicators.\n" +
+                "MEDIUM (20-39): Potentially suspicious characteristics.\n" +
+                "HIGH (40-69): Suspicious indicators detected.\n" +
+                "CRITICAL (70-100): Multiple strong indicators detected.\n\n" +
+
+                "WHEN WILL I RECEIVE A NOTIFICATION?\n\n" +
+                "When Guardian Vision detects a new HIGH or CRITICAL " +
+                "assessment during manual or continuous analysis.\n\n" +
+
+                "To prevent notification spam, Guardian limits repeated " +
+                "alerts for the same domain and risk level to one " +
+                "notification every 10 minutes.\n\n" +
+
+                "TESTING\n\n" +
+                "Click 'Send test notification' to safely verify " +
+                "that Windows notifications are working.\n\n" +
+
+                "IMPORTANT\n\n" +
+                "Guardian currently uses heuristic detection rules. " +
+                "A high score is not proof of phishing, and a low " +
+                "score does not guarantee website safety.",
+
+            CloseButtonText = "Close"
+        };
+
+        await dialog.ShowAsync();
+    }
+
 }

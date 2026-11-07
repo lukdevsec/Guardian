@@ -6,48 +6,126 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10"
-  IgnorableNamespaces="uap rescap systemai">
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  IgnorableNamespaces="uap rescap systemai desktop com">
 
-  <Identity
-    Name="2fdd8c0d-4f9d-4038-909f-5dc994b95ba1"
-    Publisher="CN=Golden Retriever"
-    Version="1.0.0.0" />
+	<!-- GUARDIAN PACKAGE IDENTITY -->
 
-  <mp:PhoneIdentity PhoneProductId="2fdd8c0d-4f9d-4038-909f-5dc994b95ba1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+	<Identity
+	  Name="2fdd8c0d-4f9d-4038-909f-5dc994b95ba1"
+	  Publisher="CN=Golden Retriever"
+	  Version="1.0.0.0" />
 
-  <Properties>
-    <DisplayName>Guardian.Desktop</DisplayName>
-    <PublisherDisplayName>Golden Retriever</PublisherDisplayName>
-    <Logo>Assets\StoreLogo.png</Logo>
-  </Properties>
+	<mp:PhoneIdentity
+	  PhoneProductId="2fdd8c0d-4f9d-4038-909f-5dc994b95ba1"
+	  PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
-  <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26226.0" />
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26226.0" />
-  </Dependencies>
+	<!-- APPLICATION PROPERTIES -->
 
-  <Resources>
-    <Resource Language="x-generate"/>
-  </Resources>
+	<Properties>
+		<DisplayName>Guardian.Desktop</DisplayName>
+		<PublisherDisplayName>Golden Retriever</PublisherDisplayName>
+		<Logo>Assets\StoreLogo.png</Logo>
+	</Properties>
 
-  <Applications>
-    <Application Id="App"
-      Executable="$targetnametoken$.exe"
-      EntryPoint="$targetentrypoint$">
-      <uap:VisualElements
-        DisplayName="Guardian.Desktop"
-        Description="Guardian.Desktop"
-        BackgroundColor="transparent"
-        Square150x150Logo="Assets\Square150x150Logo.png"
-        Square44x44Logo="Assets\Square44x44Logo.png">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
-        <uap:SplashScreen Image="Assets\SplashScreen.png" />
-      </uap:VisualElements>
-    </Application>
-  </Applications>
+	<!-- WINDOWS DEPENDENCIES -->
 
-  <Capabilities>
-    <rescap:Capability Name="runFullTrust" />
-    <systemai:Capability Name="systemAIModels"/>
-  </Capabilities>
+	<Dependencies>
+
+		<TargetDeviceFamily
+		  Name="Windows.Universal"
+		  MinVersion="10.0.17763.0"
+		  MaxVersionTested="10.0.26226.0" />
+
+		<TargetDeviceFamily
+		  Name="Windows.Desktop"
+		  MinVersion="10.0.17763.0"
+		  MaxVersionTested="10.0.26226.0" />
+
+	</Dependencies>
+
+	<!-- RESOURCES -->
+
+	<Resources>
+		<Resource Language="x-generate" />
+	</Resources>
+
+	<!-- GUARDIAN APPLICATION -->
+
+	<Applications>
+
+		<Application
+		  Id="App"
+		  Executable="$targetnametoken$.exe"
+		  EntryPoint="$targetentrypoint$">
+
+			<!-- VISUAL ELEMENTS -->
+
+			<uap:VisualElements
+			  DisplayName="Guardian.Desktop"
+			  Description="Guardian.Desktop"
+			  BackgroundColor="transparent"
+			  Square150x150Logo="Assets\Square150x150Logo.png"
+			  Square44x44Logo="Assets\Square44x44Logo.png">
+
+				<uap:DefaultTile
+				  Wide310x150Logo="Assets\Wide310x150Logo.png" />
+
+				<uap:SplashScreen
+				  Image="Assets\SplashScreen.png" />
+
+			</uap:VisualElements>
+
+			<!-- WINDOWS NOTIFICATION ACTIVATION -->
+
+			<Extensions>
+
+				<!-- Register notification activator -->
+
+				<desktop:Extension
+				  Category="windows.toastNotificationActivation">
+
+					<desktop:ToastNotificationActivation
+					  ToastActivatorCLSID="8B514ED0-FC7C-48C1-997B-1D73DC41B6A4" />
+
+				</desktop:Extension>
+
+				<!-- Register Guardian COM notification server -->
+
+				<com:Extension
+				  Category="windows.comServer">
+
+					<com:ComServer>
+
+						<com:ExeServer
+						  Executable="Guardian.Desktop.exe"
+						  DisplayName="Guardian"
+						  Arguments="----AppNotificationActivated:">
+
+							<com:Class
+							  Id="8B514ED0-FC7C-48C1-997B-1D73DC41B6A4" />
+
+						</com:ExeServer>
+
+					</com:ComServer>
+
+				</com:Extension>
+
+			</Extensions>
+
+		</Application>
+
+	</Applications>
+
+	<!-- APPLICATION CAPABILITIES -->
+
+	<Capabilities>
+
+		<rescap:Capability Name="runFullTrust" />
+
+		<systemai:Capability Name="systemAIModels" />
+
+	</Capabilities>
+
 </Package>
