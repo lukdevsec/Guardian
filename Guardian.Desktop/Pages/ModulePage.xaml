@@ -1,0 +1,101 @@
+<Page
+    x:Class="Guardian.Desktop.Pages.ModulePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Background="#0B1424">
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+
+            <StackPanel
+                Padding="36,32,36,36"
+                Spacing="22">
+
+                <StackPanel Spacing="8">
+
+                    <TextBlock
+                        Text="GUARDIAN INTELLIGENCE"
+                        FontSize="10"
+                        CharacterSpacing="140"
+                        Foreground="#6BCFFF"/>
+
+                    <TextBlock
+                        x:Name="ModuleTitleText"
+                        Text="Security Module"
+                        FontSize="30"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        TextWrapping="Wrap"/>
+
+                    <TextBlock
+                        x:Name="ModuleDescriptionText"
+                        FontSize="14"
+                        Foreground="#A8BAD1"
+                        TextWrapping="Wrap"
+                        MaxWidth="760"/>
+
+                </StackPanel>
+
+                <Border
+                    Background="#17283E"
+                    BorderBrush="#304D6B"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    Padding="24">
+
+                    <StackPanel Spacing="14">
+
+                        <Grid ColumnDefinitions="*,Auto">
+
+                            <TextBlock
+                                Text="MODULE STATUS"
+                                FontSize="10"
+                                CharacterSpacing="110"
+                                Foreground="#7DDCC4"/>
+
+                            <Border
+                                Grid.Column="1"
+                                Background="#273B54"
+                                CornerRadius="8"
+                                Padding="10,5">
+
+                                <TextBlock
+                                    Text="DEVELOPMENT"
+                                    FontSize="9"
+                                    Foreground="#9FCFFF"/>
+
+                            </Border>
+
+                        </Grid>
+
+                        <TextBlock
+                            x:Name="ModuleStatusText"
+                            FontSize="19"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            TextWrapping="Wrap"/>
+
+                        <TextBlock
+                            x:Name="ModuleDetailsText"
+                            FontSize="13"
+                            Foreground="#B2C3D7"
+                            TextWrapping="Wrap"
+                            LineHeight="23"/>
+
+                    </StackPanel>
+
+                </Border>
+
+                <TextBlock
+                    Text="GUARDIAN · ENDPOINT SECURITY INTELLIGENCE"
+                    FontSize="10"
+                    CharacterSpacing="80"
+                    Foreground="#637D9B"/>
+
+            </StackPanel>
+
+        </ScrollViewer>
+
+    </Grid>
+
+</Page>

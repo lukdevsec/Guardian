@@ -47,9 +47,7 @@
 
 	<!-- MSIX PROJECT CAPABILITY -->
 
-	<ItemGroup
-	  Condition="'$(DisableMsixProjectCapabilityAddedByProject)' != 'true'
-    and '$(EnableMsixTooling)' == 'true'">
+	<ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)' != 'true'&#xD;&#xA;    and '$(EnableMsixTooling)' == 'true'">
 
 		<ProjectCapability Include="Msix" />
 
@@ -59,41 +57,25 @@
 
 	<ItemGroup>
 
-		<PackageReference
-		  Include="FlaUI.UIA3"
-		  Version="5.0.0" />
+		<PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
 
-		<PackageReference
-		  Include="Microsoft.Graphics.Win2D"
-		  Version="1.4.0" />
+		<PackageReference Include="Microsoft.Graphics.Win2D" Version="1.4.0" />
 
-		<PackageReference
-		  Include="Microsoft.Windows.SDK.BuildTools"
-		  Version="10.0.28000.2957" />
+		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
 
-		<PackageReference
-		  Include="Microsoft.WindowsAppSDK"
-		  Version="2.6.5" />
+		<PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
 
-		<PackageReference
-		  Include="RapidOcrNet"
-		  Version="4.2.0" />
+		<PackageReference Include="RapidOcrNet" Version="4.2.0" />
 
-		<PackageReference
-		  Include="WinUIEx"
-		  Version="2.9.3" />
+		<PackageReference Include="WinUIEx" Version="2.9.3" />
 
-		<PackageReference
-		  Include="Microsoft.Extensions.Hosting"
-		  Version="10.0.14" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
 
 	</ItemGroup>
 
 	<!-- PACKAGE AND PUBLISH -->
 
-	<PropertyGroup
-	  Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)' != 'true'
-    and '$(EnableMsixTooling)' == 'true'">
+	<PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)' != 'true'&#xD;&#xA;    and '$(EnableMsixTooling)' == 'true'">
 
 		<HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
 
@@ -103,17 +85,13 @@
 
 	<PropertyGroup>
 
-		<PublishReadyToRun
-		  Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+		<PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
 
-		<PublishReadyToRun
-		  Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+		<PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
 
-		<PublishTrimmed
-		  Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
+		<PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
 
-		<PublishTrimmed
-		  Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+		<PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
 
 	</PropertyGroup>
 
@@ -121,8 +99,7 @@
 
 	<ItemGroup>
 
-		<ProjectReference
-		  Include="..\Guardian.Service\Guardian.Service.csproj" />
+		<ProjectReference Include="..\Guardian.Service\Guardian.Service.csproj" />
 
 	</ItemGroup>
 
@@ -130,8 +107,7 @@
 
 	<ItemGroup>
 
-		<Content
-		  Include="$(NuGetPackageRoot)rapidocrnet\4.2.0\models\v5\**\*">
+		<Content Include="$(NuGetPackageRoot)rapidocrnet\4.2.0\models\v5\**\*">
 
 			<Link>models\v5\%(RecursiveDir)%(Filename)%(Extension)</Link>
 
@@ -150,6 +126,8 @@
 
 		<None Remove="AnalysisDetailsWindow.xaml" />
 
+		<None Remove="Pages\ModulePage.xaml" />
+
 	</ItemGroup>
 
 	<ItemGroup>
@@ -162,27 +140,25 @@
 
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Page Update="Pages\ModulePage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	</ItemGroup>
+
 	<!-- COPY RAPID OCR MODELS INTO APPX -->
 
-	<Target
-	  Name="CopyRapidOcrModelsIntoAppX"
-	  AfterTargets="Build">
+	<Target Name="CopyRapidOcrModelsIntoAppX" AfterTargets="Build">
 
 		<ItemGroup>
 
-			<_RapidOcrModel
-			  Include="$(NuGetPackageRoot)rapidocrnet\4.2.0\models\v5\**\*" />
+			<_RapidOcrModel Include="$(NuGetPackageRoot)rapidocrnet\4.2.0\models\v5\**\*" />
 
 		</ItemGroup>
 
-		<Copy
-		  SourceFiles="@(_RapidOcrModel)"
-		  DestinationFiles="@(_RapidOcrModel->'$(OutDir)AppX\models\v5\%(RecursiveDir)%(Filename)%(Extension)')"
-		  SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(_RapidOcrModel)" DestinationFiles="@(_RapidOcrModel->'$(OutDir)AppX\models\v5\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
 
-		<Message
-		  Text="Guardian OCR models copied into AppX."
-		  Importance="high" />
+		<Message Text="Guardian OCR models copied into AppX." Importance="high" />
 
 	</Target>
 
