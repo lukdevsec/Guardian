@@ -94,6 +94,46 @@ public sealed partial class AnalysisDetailsWindow : Window
                 ? "No readable content detected."
                 : _report.RecognizedText;
 
+        if (_report.CloudAnalysis is { } ai)
+        {
+            ReportAiVerdictText.Text = ai.Verdict;
+            ReportAiConfidenceText.Text = $"Confidence: {ai.Confidence}%";
+            ReportAiModelText.Text =
+                $"Model: {_report.CloudModel ?? "Anthropic Claude"}";
+
+            ReportAiDomainText.Text = ai.DomainAssessment is { } domain
+                ? domain.Status == "MATCHED_KNOWN_OFFICIAL_DOMAIN"
+                    ? $"Domain registry: {domain.Brand} · official domain match ({domain.OfficialDomain}). This is a domain match, not a safety guarantee."
+                    : $"Domain registry: No known official-domain match for {domain.Hostname}. This alone is not evidence of phishing."
+                : "Domain registry: Not available in this assessment.";
+
+            ReportAiSummaryText.Text = ai.Summary;
+            ReportAiIndicatorsText.Text = ai.Indicators.Count == 0
+                ? "No indicators returned by the Cloud AI assessment."
+                : string.Join(
+                    Environment.NewLine + Environment.NewLine,
+                    ai.Indicators.Select(item =>
+                        $"• {item.Severity}: {item.Name}\n  Evidence: {item.Evidence}"));
+            ReportAiActionText.Text = ai.RecommendedAction;
+
+            ReportAiUsageText.Text = _report.CloudUsage == null
+                ? "Token usage unavailable."
+                : $"Usage: {_report.CloudUsage.InputTokens:N0} input / {_report.CloudUsage.OutputTokens:N0} output tokens · " +
+                  $"Analyzed: {_report.CloudAnalyzedAt?.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
+        }
+        else
+        {
+            ReportAiVerdictText.Text = "Not analyzed";
+            ReportAiConfidenceText.Text = "Confidence: N/A";
+            ReportAiModelText.Text = "Model: Not used";
+            ReportAiDomainText.Text = "Domain registry: Not checked";
+            ReportAiSummaryText.Text =
+                "Cloud AI has not been run for this report. Use 'Analyze latest page with Claude' in Guardian Vision.";
+            ReportAiIndicatorsText.Text = "No Cloud AI indicators available.";
+            ReportAiActionText.Text = "No recommendation available.";
+            ReportAiUsageText.Text = "No API tokens used for Cloud AI.";
+        }
+
         UpdateBadge();
     }
 
@@ -139,6 +179,27 @@ public sealed partial class AnalysisDetailsWindow : Window
         builder.AppendLine(
             $"Score: {_report.RiskScore?.ToString() ?? "N/A"}/100");
         builder.AppendLine($"Summary: {_report.Summary}");
+
+        if (_report.CloudAnalysis is { } ai)
+        {
+            builder.AppendLine();
+            builder.AppendLine("CLOUD AI ASSESSMENT");
+            builder.AppendLine($"Model: {_report.CloudModel ?? "Anthropic Claude"}");
+            builder.AppendLine($"Verdict: {ai.Verdict}");
+            builder.AppendLine($"Confidence: {ai.Confidence}%");
+            if (ai.DomainAssessment is { } domain)
+            {
+                string domainLabel = domain.Brand ?? domain.Hostname;
+                string officialDomain = domain.OfficialDomain ?? "no registry match";
+                builder.AppendLine($"Domain registry: {domain.Status} · {domainLabel} · {officialDomain}");
+            }
+            builder.AppendLine($"Summary: {ai.Summary}");
+            foreach (var indicator in ai.Indicators)
+            {
+                builder.AppendLine($"- {indicator.Severity}: {indicator.Name} — {indicator.Evidence}");
+            }
+            builder.AppendLine($"Recommended action: {ai.RecommendedAction}");
+        }
 
         builder.AppendLine();
         builder.AppendLine("DETECTION REASONS");

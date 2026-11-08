@@ -1,4 +1,4 @@
-﻿
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -77,6 +77,39 @@ public sealed class NotificationService : IDisposable
             $"Risk: {report.RiskLevel} " +
             $"({report.RiskScore?.ToString() ?? "N/A"}/100). " +
             "Click to view the analysis.");
+
+        if (sent)
+            _recentAlerts[key] = now;
+
+        return sent;
+    }
+
+    public bool SendAiThreatNotification(AnalysisReport report)
+    {
+        var ai = report.CloudAnalysis;
+
+        if (!_registered || ai == null)
+            return false;
+
+        if ((ai.Verdict != "HIGH" && ai.Verdict != "CRITICAL") ||
+            ai.Confidence < 75)
+        {
+            return false;
+        }
+
+        string key = "CLOUD_AI|" + report.Domain.ToLowerInvariant() + "|" + ai.Verdict;
+        DateTime now = DateTime.UtcNow;
+
+        if (_recentAlerts.TryGetValue(key, out DateTime previous) &&
+            now - previous < _cooldown)
+        {
+            return false;
+        }
+
+        bool sent = Send(
+            "Guardian Cloud AI Alert",
+            $"Potential high-risk indicators: {report.Domain}",
+            $"Claude assessment: {ai.Verdict} ({ai.Confidence}% confidence). Click to review the evidence.");
 
         if (sent)
             _recentAlerts[key] = now;

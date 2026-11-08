@@ -7,6 +7,8 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Guardian.Desktop.Notifications;
+using Guardian.Desktop.Cloud;
+using Guardian.Desktop.History;
 using Guardian.Desktop.Pages;
 using Guardian.Desktop.UI;
 using Guardian.Desktop.Vision;
@@ -59,6 +61,10 @@ public sealed partial class MainWindow : Window
 
     private readonly NotificationService _notifications;
 
+    private readonly GuardianCloudClient _cloudClient = new();
+
+    private readonly GuardianHistoryStore _historyStore = new();
+
     // ==========================================
     // REPORTS
     // ==========================================
@@ -76,6 +82,8 @@ public sealed partial class MainWindow : Window
     // ==========================================
 
     private bool _visionBusy;
+
+    private bool _cloudBusy;
 
     private bool _continuousStarting;
 
@@ -121,11 +129,10 @@ public sealed partial class MainWindow : Window
         // INITIAL DASHBOARD STATE
         // ======================================
 
-        DashboardContent.Visibility =
-            Visibility.Visible;
-
-        ModuleFrame.Visibility =
-            Visibility.Collapsed;
+        DashboardContent.Visibility = Visibility.Visible;
+        VisionContent.Visibility = Visibility.Collapsed;
+        SettingsContent.Visibility = Visibility.Collapsed;
+        ModuleFrame.Visibility = Visibility.Collapsed;
 
         // Select Dashboard.
         if (RootNavigation.MenuItems.Count > 0)
@@ -281,6 +288,11 @@ public sealed partial class MainWindow : Window
             "Start a screen analysis to view security findings.";
 
         VisionDetailsButton.IsEnabled = false;
+        CloudAiButton.IsEnabled = false;
+        VisionAiVerdictText.Text = "Not analyzed";
+        CloudAiStatusText.Text = _cloudClient.IsConfigured
+            ? "Guardian Cloud ready · Claude analysis runs only when requested."
+            : "Cloud token not configured. Run Scripts\\Setup-GuardianCloudToken.ps1 once on this Windows account.";
 
         // ======================================
         // INITIAL ENDPOINT STATE
@@ -300,40 +312,39 @@ public sealed partial class MainWindow : Window
         NavigationView sender,
         NavigationViewSelectionChangedEventArgs args)
     {
-        if (args.SelectedItemContainer
-            is not NavigationViewItem item)
-        {
+        if (args.SelectedItemContainer is not NavigationViewItem item)
             return;
+
+        string section = item.Tag?.ToString() ?? "Dashboard";
+
+        DashboardContent.Visibility = Visibility.Collapsed;
+        VisionContent.Visibility = Visibility.Collapsed;
+        SettingsContent.Visibility = Visibility.Collapsed;
+        ModuleFrame.Visibility = Visibility.Collapsed;
+
+        switch (section)
+        {
+            case "Dashboard":
+                DashboardContent.Visibility = Visibility.Visible;
+                break;
+
+            case "Vision":
+                VisionContent.Visibility = Visibility.Visible;
+                break;
+
+            case "Settings":
+                SettingsContent.Visibility = Visibility.Visible;
+                break;
+
+            case "Endpoint":
+            case "Alerts":
+            case "History":
+                ModuleFrame.Visibility = Visibility.Visible;
+                ModuleFrame.Navigate(typeof(ModulePage), section);
+                break;
         }
 
-        string section =
-            item.Tag?.ToString() ?? "Dashboard";
-
-        Debug.WriteLine(
-            $"Guardian navigation: {section}");
-
-        // Dashboard.
-        if (section == "Dashboard")
-        {
-            DashboardContent.Visibility =
-                Visibility.Visible;
-
-            ModuleFrame.Visibility =
-                Visibility.Collapsed;
-
-            return;
-        }
-
-        // Other modules.
-        DashboardContent.Visibility =
-            Visibility.Collapsed;
-
-        ModuleFrame.Visibility =
-            Visibility.Visible;
-
-        ModuleFrame.Navigate(
-            typeof(ModulePage),
-            section);
+        Debug.WriteLine($"Guardian navigation: {section}");
     }
 
     // ==========================================
@@ -900,6 +911,18 @@ public sealed partial class MainWindow : Window
     {
         _latestReport = report;
 
+        _historyStore.Save(report);
+
+        VisionAiVerdictText.Text = "Not analyzed";
+        CloudAiButton.IsEnabled =
+            _cloudClient.IsConfigured &&
+            !string.IsNullOrWhiteSpace(report.ActiveUrl) &&
+            !string.IsNullOrWhiteSpace(report.RecognizedText);
+
+        CloudAiStatusText.Text = _cloudClient.IsConfigured
+            ? "Local analysis complete · Claude is optional. Click Analyze latest page with Claude to request cloud analysis."
+            : "Cloud token not configured · local analysis is still available.";
+
         _sessionHistory.Add(report);
 
         // Keep session history limited.
@@ -1019,6 +1042,122 @@ public sealed partial class MainWindow : Window
             new SolidColorBrush(
                 ColorHelper.FromArgb(
                     255, r, g, b));
+    }
+
+    // ==========================================
+    // OPTIONAL CLAUDE CLOUD ANALYSIS
+    // ==========================================
+
+    private async void CloudAiButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (_cloudBusy || _latestReport == null)
+            return;
+
+        if (!_cloudClient.IsConfigured)
+        {
+            CloudAiStatusText.Text =
+                "Cloud access token is missing. Run Scripts\\Setup-GuardianCloudToken.ps1.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_latestReport.ActiveUrl) ||
+            string.IsNullOrWhiteSpace(_latestReport.RecognizedText))
+        {
+            CloudAiStatusText.Text =
+                "A verified browser URL and recognized page text are required.";
+            return;
+        }
+
+        _cloudBusy = true;
+        CloudAiButton.IsEnabled = false;
+        CloudAiButton.Content = "Analyzing with Claude...";
+        CloudAiStatusText.Text =
+            "Sending verified URL, OCR text and local findings to Guardian Cloud. No screenshot is uploaded.";
+        VisionAiVerdictText.Text = "Analysis in progress...";
+
+        try
+        {
+            using var timeout = new System.Threading.CancellationTokenSource(
+                TimeSpan.FromSeconds(50));
+
+            AnalysisReport sourceReport = _latestReport;
+            GuardianCloudEnvelope response = await _cloudClient.AnalyzeAsync(
+                sourceReport,
+                timeout.Token);
+
+            AnalysisReport updatedReport = sourceReport with
+            {
+                CloudAnalysis = response.Analysis,
+                CloudUsage = response.Usage,
+                CloudModel = response.Model,
+                CloudAnalyzedAt = response.Timestamp ?? DateTimeOffset.UtcNow
+            };
+
+            _latestReport = updatedReport;
+            _historyStore.Save(updatedReport);
+
+            int sessionIndex = _sessionHistory.FindIndex(item => item.Id == sourceReport.Id);
+            if (sessionIndex >= 0)
+                _sessionHistory[sessionIndex] = updatedReport;
+
+            var ai = response.Analysis!;
+            VisionAiVerdictText.Text =
+                $"{ai.Verdict} · {ai.Confidence}% confidence";
+
+            string usageText = response.Usage == null
+                ? ""
+                : $" · {response.Usage.InputTokens:N0} in / {response.Usage.OutputTokens:N0} out";
+
+            string domainStatus = ai.DomainAssessment is { } domain
+                ? domain.Status == "MATCHED_KNOWN_OFFICIAL_DOMAIN"
+                    ? $" · Domain registry: {domain.Brand} match ({domain.OfficialDomain})"
+                    : $" · No known registry match for {domain.Hostname}"
+                : string.Empty;
+
+            CloudAiStatusText.Text =
+                $"Claude analysis completed · {response.Model}{usageText}{domainStatus}";
+
+            if ((ai.Verdict == "HIGH" || ai.Verdict == "CRITICAL") &&
+                ai.Confidence >= 75)
+            {
+                _latestAlertReport = updatedReport;
+                _notifications.SendAiThreatNotification(updatedReport);
+            }
+
+            Debug.WriteLine(
+                $"Guardian Cloud analysis completed for {sourceReport.Domain}: {ai.Verdict} ({ai.Confidence}%).");
+        }
+        catch (GuardianCloudException ex)
+        {
+            VisionAiVerdictText.Text = "Cloud analysis unavailable";
+            CloudAiStatusText.Text = ex.Message;
+            Debug.WriteLine($"Guardian Cloud error: {ex.Message}");
+        }
+        catch (OperationCanceledException)
+        {
+            VisionAiVerdictText.Text = "Analysis timed out";
+            CloudAiStatusText.Text =
+                "Claude did not respond in time. Local heuristic results remain available.";
+        }
+        catch (Exception ex)
+        {
+            VisionAiVerdictText.Text = "Cloud analysis failed";
+            CloudAiStatusText.Text =
+                "Cloud analysis failed. Local heuristic results remain available.";
+            Debug.WriteLine($"Guardian Cloud unexpected error: {ex}");
+        }
+        finally
+        {
+            _cloudBusy = false;
+            CloudAiButton.Content = "Analyze latest page with Claude";
+            CloudAiButton.IsEnabled =
+                _latestReport != null &&
+                _cloudClient.IsConfigured &&
+                !string.IsNullOrWhiteSpace(_latestReport.ActiveUrl) &&
+                !string.IsNullOrWhiteSpace(_latestReport.RecognizedText);
+        }
     }
 
     // ==========================================

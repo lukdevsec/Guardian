@@ -4,98 +4,46 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Grid Background="#0B1424">
-
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-
-            <StackPanel
-                Padding="36,32,36,36"
-                Spacing="22">
-
-                <StackPanel Spacing="8">
-
-                    <TextBlock
-                        Text="GUARDIAN INTELLIGENCE"
-                        FontSize="10"
-                        CharacterSpacing="140"
-                        Foreground="#6BCFFF"/>
-
-                    <TextBlock
-                        x:Name="ModuleTitleText"
-                        Text="Security Module"
-                        FontSize="30"
-                        FontWeight="Bold"
-                        Foreground="White"
-                        TextWrapping="Wrap"/>
-
-                    <TextBlock
-                        x:Name="ModuleDescriptionText"
-                        FontSize="14"
-                        Foreground="#A8BAD1"
-                        TextWrapping="Wrap"
-                        MaxWidth="760"/>
-
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Padding="30,26,30,34" Spacing="20">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="GUARDIAN INTELLIGENCE" FontSize="10"
+                               CharacterSpacing="130" Foreground="#77DCC1" />
+                    <TextBlock x:Name="ModuleTitleText" Text="Security module"
+                               FontSize="29" FontWeight="Bold" Foreground="White" />
+                    <TextBlock x:Name="ModuleDescriptionText" FontSize="13"
+                               Foreground="#9DB3CE" TextWrapping="Wrap" />
                 </StackPanel>
 
-                <Border
-                    Background="#17283E"
-                    BorderBrush="#304D6B"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Padding="24">
-
-                    <StackPanel Spacing="14">
-
+                <Border Background="#17283E" BorderBrush="#2B4C6D" BorderThickness="1"
+                        CornerRadius="14" Padding="18">
+                    <StackPanel Spacing="12">
                         <Grid ColumnDefinitions="*,Auto">
-
-                            <TextBlock
-                                Text="MODULE STATUS"
-                                FontSize="10"
-                                CharacterSpacing="110"
-                                Foreground="#7DDCC4"/>
-
-                            <Border
-                                Grid.Column="1"
-                                Background="#273B54"
-                                CornerRadius="8"
-                                Padding="10,5">
-
-                                <TextBlock
-                                    Text="DEVELOPMENT"
-                                    FontSize="9"
-                                    Foreground="#9FCFFF"/>
-
-                            </Border>
-
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="MODULE STATUS" FontSize="10"
+                                           CharacterSpacing="110" Foreground="#77DCC1" />
+                                <TextBlock x:Name="ModuleStatusText" FontSize="13"
+                                           Foreground="#D5E0ED" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Refresh" Click="RefreshButton_Click"
+                                    Background="#304760" Foreground="White" Padding="13,8"
+                                    CornerRadius="8" VerticalAlignment="Center" />
                         </Grid>
-
-                        <TextBlock
-                            x:Name="ModuleStatusText"
-                            FontSize="19"
-                            FontWeight="SemiBold"
-                            Foreground="White"
-                            TextWrapping="Wrap"/>
-
-                        <TextBlock
-                            x:Name="ModuleDetailsText"
-                            FontSize="13"
-                            Foreground="#B2C3D7"
-                            TextWrapping="Wrap"
-                            LineHeight="23"/>
-
+                        <TextBox x:Name="ModuleSearchBox" PlaceholderText="Filter by process, PID, domain or event..."
+                                 TextChanged="ModuleSearchBox_TextChanged"
+                                 Background="#101F33" Foreground="White"
+                                 BorderBrush="#355574" PlaceholderForeground="#829BB8"
+                                 Padding="10,8" />
                     </StackPanel>
-
                 </Border>
 
-                <TextBlock
-                    Text="GUARDIAN · ENDPOINT SECURITY INTELLIGENCE"
-                    FontSize="10"
-                    CharacterSpacing="80"
-                    Foreground="#637D9B"/>
+                <StackPanel x:Name="ModuleItemsPanel" Spacing="10" />
 
+                <TextBlock Text="GUARDIAN · LOCAL DEVICE DATA" FontSize="10"
+                           CharacterSpacing="90" Foreground="#637D9B"
+                           HorizontalAlignment="Center" />
             </StackPanel>
-
         </ScrollViewer>
-
     </Grid>
-
 </Page>

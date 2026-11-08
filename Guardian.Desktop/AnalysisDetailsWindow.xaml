@@ -385,6 +385,122 @@
 
             </TabViewItem>
 
+            <!-- ============================= -->
+            <!-- CLOUD AI ANALYSIS -->
+            <!-- ============================= -->
+
+            <TabViewItem
+                Header="Cloud AI"
+                IsClosable="False">
+
+                <ScrollViewer
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled">
+
+                    <StackPanel
+                        Padding="8,16,8,24"
+                        Spacing="16">
+
+                        <Border
+                            Background="#1B2A40"
+                            CornerRadius="12"
+                            Padding="20">
+                            <StackPanel Spacing="12">
+                                <TextBlock
+                                    Text="CLAUDE SECURITY ASSESSMENT"
+                                    FontSize="11"
+                                    CharacterSpacing="100"
+                                    Foreground="#83DFC2"/>
+
+                                <TextBlock
+                                    x:Name="ReportAiVerdictText"
+                                    Text="Not analyzed"
+                                    FontSize="26"
+                                    FontWeight="Bold"
+                                    Foreground="White"/>
+
+                                <TextBlock
+                                    x:Name="ReportAiConfidenceText"
+                                    Text="Confidence: N/A"
+                                    FontSize="13"
+                                    Foreground="#B8C8DB"/>
+
+                                <TextBlock
+                                    x:Name="ReportAiModelText"
+                                    Text="Model: Not used"
+                                    FontSize="11"
+                                    Foreground="#91A9C4"/>
+
+                                <TextBlock
+                                    x:Name="ReportAiDomainText"
+                                    Text="Domain registry: Not checked"
+                                    FontSize="12"
+                                    Foreground="#83DFC2"
+                                    TextWrapping="Wrap"/>
+
+                                <TextBlock
+                                    x:Name="ReportAiSummaryText"
+                                    Text="Run Cloud AI analysis from Guardian Vision to see the contextual assessment."
+                                    FontSize="13"
+                                    Foreground="#D5E0ED"
+                                    TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Background="#1B2A40"
+                            CornerRadius="12"
+                            Padding="20">
+                            <StackPanel Spacing="12">
+                                <TextBlock
+                                    Text="AI INDICATORS"
+                                    FontSize="11"
+                                    CharacterSpacing="100"
+                                    Foreground="#83DFC2"/>
+
+                                <TextBlock
+                                    x:Name="ReportAiIndicatorsText"
+                                    FontSize="13"
+                                    Foreground="#D5E0ED"
+                                    TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            Background="#1B2A40"
+                            CornerRadius="12"
+                            Padding="20">
+                            <StackPanel Spacing="12">
+                                <TextBlock
+                                    Text="RECOMMENDED ACTION"
+                                    FontSize="11"
+                                    CharacterSpacing="100"
+                                    Foreground="#83DFC2"/>
+
+                                <TextBlock
+                                    x:Name="ReportAiActionText"
+                                    FontSize="13"
+                                    Foreground="#D5E0ED"
+                                    TextWrapping="Wrap"/>
+
+                                <TextBlock
+                                    x:Name="ReportAiUsageText"
+                                    FontSize="11"
+                                    Foreground="#91A9C4"
+                                    TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock
+                            Text="Cloud AI is an additional advisory assessment. It does not replace local heuristics, verify domain reputation, or guarantee that a website is safe."
+                            FontSize="11"
+                            Foreground="#91A9C4"
+                            TextWrapping="Wrap"/>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabViewItem>
+
         </TabView>
 
     </Grid>

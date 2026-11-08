@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<!-- APPLICATION CONFIGURATION -->
 
@@ -70,6 +70,7 @@
 		<PackageReference Include="WinUIEx" Version="2.9.3" />
 
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
+		<PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
 
 	</ItemGroup>
 
@@ -100,6 +101,7 @@
 	<ItemGroup>
 
 		<ProjectReference Include="..\Guardian.Service\Guardian.Service.csproj" />
+		<ProjectReference Include="..\Guardian.Monitoring\Guardian.Monitoring.csproj" />
 
 	</ItemGroup>
 
