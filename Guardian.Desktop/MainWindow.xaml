@@ -3,297 +3,588 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <Grid Background="#0B1424">
+    <Grid Background="#061426">
         <NavigationView
             x:Name="RootNavigation"
             PaneDisplayMode="Left"
             IsBackButtonVisible="Collapsed"
             IsSettingsVisible="False"
-            IsPaneToggleButtonVisible="True"
-            OpenPaneLength="230"
+            IsPaneToggleButtonVisible="False"
+            OpenPaneLength="285"
             CompactPaneLength="64"
             SelectionChanged="RootNavigation_SelectionChanged"
-            Background="#101B2D"
-            Foreground="White">
+            Background="#08182B"
+            Foreground="#EEF6FF">
 
+            <NavigationView.Resources>
+                <SolidColorBrush x:Key="NavigationViewItemForeground" Color="#D7E6F5" />
+                <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="#FFFFFF" />
+                <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="#17385A" />
+                <SolidColorBrush x:Key="NavigationViewItemBackgroundPointerOver" Color="#142E49" />
+                <SolidColorBrush x:Key="NavigationViewItemBackgroundPressed" Color="#1A4267" />
+            </NavigationView.Resources>
+
+            <!-- BRAND / SIDEBAR HEADER -->
+            <NavigationView.PaneHeader>
+                <Border Padding="20,22,16,20"
+                        BorderBrush="#173A5A"
+                        BorderThickness="0,0,0,1">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#0A1E35" Offset="0" />
+                            <GradientStop Color="#071528" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid ColumnDefinitions="58,*" ColumnSpacing="13">
+                        <Border Width="56" Height="56" CornerRadius="12"
+                                Background="#102C49"
+                                BorderBrush="#2479B5" BorderThickness="1">
+                            <Image Source="ms-appx:///Assets/GuardianIcon.png"
+                                   Width="53" Height="53"
+                                   Stretch="Uniform" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="5">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="7">
+                                <TextBlock Text="Guardian"
+                                           FontSize="23"
+                                           FontWeight="SemiBold"
+                                           Foreground="#F4F8FF"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="None"
+                                           VerticalAlignment="Center" />
+                                <Border Grid.Column="1"
+                                        Background="#173858"
+                                        BorderBrush="#2C6A99"
+                                        BorderThickness="1"
+                                        CornerRadius="7"
+                                        Padding="7,3"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="v0.9.5"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Foreground="#BDE5FF" />
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="Endpoint Security Intelligence"
+                                       FontSize="11"
+                                       Foreground="#A7C1DA"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </NavigationView.PaneHeader>
+
+            <!-- PRIMARY NAVIGATION -->
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="Dashboard" Tag="Dashboard" IsSelected="True">
+                <NavigationViewItem Content="Dashboard" Tag="Dashboard" IsSelected="True"
+                                    FontSize="15" MinHeight="50" Margin="8,3">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE80F;" FontFamily="Segoe MDL2 Assets" />
+                        <FontIcon Glyph="&#xE80F;" FontFamily="Segoe MDL2 Assets" FontSize="21" Foreground="#B9E3FF" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Endpoint" Tag="Endpoint">
+                <NavigationViewItem Content="Endpoint" Tag="Endpoint"
+                                    FontSize="15" MinHeight="50" Margin="8,3">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE7F4;" FontFamily="Segoe MDL2 Assets" />
+                        <FontIcon Glyph="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="21" Foreground="#B9E3FF" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Guardian Vision" Tag="Vision">
+                <NavigationViewItem Content="Guardian Vision" Tag="Vision"
+                                    FontSize="15" MinHeight="50" Margin="8,3">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE8A9;" FontFamily="Segoe MDL2 Assets" />
+                        <FontIcon Glyph="&#xE8A9;" FontFamily="Segoe MDL2 Assets" FontSize="21" Foreground="#B9E3FF" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Security Alerts" Tag="Alerts">
+                <NavigationViewItem Content="Domain Intelligence" Tag="Domain"
+                                    FontSize="15" MinHeight="50" Margin="8,3">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE7BA;" FontFamily="Segoe MDL2 Assets" />
+                        <FontIcon Glyph="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="21" Foreground="#B9E3FF" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="History" Tag="History">
+                <NavigationViewItem Content="Security Alerts" Tag="Alerts"
+                                    FontSize="15" MinHeight="50" Margin="8,3">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE81C;" FontFamily="Segoe MDL2 Assets" />
+                        <FontIcon Glyph="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="21" Foreground="#B9E3FF" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Settings" Tag="Settings">
+                <NavigationViewItem Content="History" Tag="History"
+                                    FontSize="15" MinHeight="50" Margin="8,3">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE713;" FontFamily="Segoe MDL2 Assets" />
+                        <FontIcon Glyph="&#xE81C;" FontFamily="Segoe MDL2 Assets" FontSize="21" Foreground="#B9E3FF" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Settings" Tag="Settings"
+                                    FontSize="15" MinHeight="50" Margin="8,3">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="21" Foreground="#B9E3FF" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
 
+            <!-- AUTHOR IS A SEPARATE PAGE -->
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Tag="Author" FontSize="14" MinHeight="58" Margin="8,4">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE77B;" FontFamily="Segoe MDL2 Assets" FontSize="22" Foreground="#C6E7FF" />
+                    </NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Author" FontSize="14" FontWeight="SemiBold" Foreground="#F4F8FF" />
+                            <TextBlock Text="lukdevsec" FontSize="11" Foreground="#91B3D2" />
+                        </StackPanel>
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
+
             <NavigationView.Content>
-                <Grid>
-                    <!-- DASHBOARD: concise endpoint overview only -->
-                    <ScrollViewer x:Name="DashboardContent"
+                <Grid Background="#07172A">
+
+                    <!-- DASHBOARD -->
+                    <Grid>
+                        <Path Data="M 0,470 C 180,360 260,570 440,455 S 760,270 1040,365"
+                              Stroke="#167EB5" StrokeThickness="2" Opacity="0.16"
+                              Stretch="Fill" IsHitTestVisible="False" />
+                        <Path Data="M 0,520 C 190,420 290,610 480,500 S 790,320 1040,410"
+                              Stroke="#0C5C91" StrokeThickness="1.5" Opacity="0.12"
+                              Stretch="Fill" IsHitTestVisible="False" />
+                        <ScrollViewer x:Name="DashboardContent"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Padding="30,26,30,34" Spacing="24">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <Image Source="ms-appx:///Assets/GuardianIcon.png"
-                                       Width="52" Height="52" Stretch="Uniform" />
-                                <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center" Spacing="3">
-                                    <TextBlock Text="GUARDIAN" FontSize="24" FontWeight="Bold"
-                                               CharacterSpacing="90" Foreground="White" />
-                                    <TextBlock Text="Endpoint Security Intelligence" FontSize="12"
-                                               Foreground="#9DB3CE" />
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#153B35" BorderBrush="#287E68"
-                                        BorderThickness="1" CornerRadius="10" Padding="12,8"
-                                        VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Ellipse Width="8" Height="8" Fill="#48D69B" />
-                                        <TextBlock Text="MONITOR ONLY" FontSize="9" FontWeight="SemiBold"
-                                                   Foreground="#8BE6C2" />
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
+                        <Grid>
+                            <!-- Subtle ambient blue lighting behind the cards. -->
+                            <Border HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Width="560" Height="270"
+                                    CornerRadius="0,0,0,260"
+                                    Opacity="0.18">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#123E65" Offset="0" />
+                                        <GradientStop Color="#0A2039" Offset="0.55" />
+                                        <GradientStop Color="#07172A" Offset="1" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
 
-                            <StackPanel Spacing="5">
-                                <TextBlock Text="Security overview" FontSize="29" FontWeight="Bold" Foreground="White" />
-                                <TextBlock Text="A clean view of endpoint activity detected during this session."
-                                           FontSize="13" Foreground="#9DB3CE" />
-                            </StackPanel>
+                            <StackPanel Padding="28,25,28,30" Spacing="20">
 
-                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="14">
-                                <Border Background="#17283E" BorderBrush="#2B4C6D" BorderThickness="1"
-                                        CornerRadius="14" Padding="20">
-                                    <StackPanel Spacing="10">
-                                        <FontIcon Glyph="&#xE7F4;" FontFamily="Segoe MDL2 Assets"
-                                                  FontSize="22" Foreground="#75CFFF" />
-                                        <TextBlock Text="PROCESS EVENTS" FontSize="10" CharacterSpacing="90"
-                                                   Foreground="#A6BDD5" />
-                                        <TextBlock x:Name="ProcessesText" Text="0" FontSize="32"
-                                                   FontWeight="Bold" Foreground="White" />
-                                        <TextBlock Text="Observed this session" FontSize="11" Foreground="#829BB8" />
+                                <!-- DASHBOARD HEADER -->
+                                <Grid ColumnDefinitions="6,*,Auto" ColumnSpacing="18">
+                                    <Border Width="5" Height="70" CornerRadius="3"
+                                            Background="#27C8F4" VerticalAlignment="Center" Opacity="0.95" />
+                                    <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+                                        <TextBlock Text="GUARDIAN INTELLIGENCE"
+                                                   FontSize="11" CharacterSpacing="145"
+                                                   FontWeight="SemiBold" Foreground="#70E4D0" />
+                                        <TextBlock Text="Security Overview"
+                                                   FontSize="39" FontWeight="Bold"
+                                                   Foreground="#F5F8FF" />
+                                        <TextBlock Text="Real-time insight into endpoint activity, network connections and security detections."
+                                                   FontSize="15" Foreground="#B1C8E0"
+                                                   TextWrapping="Wrap" />
                                     </StackPanel>
-                                </Border>
-                                <Border Grid.Column="1" Background="#17283E" BorderBrush="#2B4C6D"
-                                        BorderThickness="1" CornerRadius="14" Padding="20">
-                                    <StackPanel Spacing="10">
-                                        <FontIcon Glyph="&#xE774;" FontFamily="Segoe MDL2 Assets"
-                                                  FontSize="22" Foreground="#75CFFF" />
-                                        <TextBlock Text="TCP EVENTS" FontSize="10" CharacterSpacing="90"
-                                                   Foreground="#A6BDD5" />
-                                        <TextBlock x:Name="ConnectionsText" Text="0" FontSize="32"
-                                                   FontWeight="Bold" Foreground="White" />
-                                        <TextBlock Text="New connections observed" FontSize="11" Foreground="#829BB8" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="2" Background="#17283E" BorderBrush="#2B4C6D"
-                                        BorderThickness="1" CornerRadius="14" Padding="20">
-                                    <StackPanel Spacing="10">
-                                        <FontIcon Glyph="&#xE7BA;" FontFamily="Segoe MDL2 Assets"
-                                                  FontSize="22" Foreground="#F4B46F" />
-                                        <TextBlock Text="ALERTS" FontSize="10" CharacterSpacing="90"
-                                                   Foreground="#A6BDD5" />
-                                        <TextBlock x:Name="AlertsText" Text="0" FontSize="32"
-                                                   FontWeight="Bold" Foreground="White" />
-                                        <TextBlock Text="Detections recorded" FontSize="11" Foreground="#829BB8" />
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <Border Background="#17283E" BorderBrush="#2B4C6D" BorderThickness="1"
-                                    CornerRadius="14" Padding="20">
-                                <StackPanel Spacing="14">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Text="ENDPOINT ENGINE" FontSize="10" CharacterSpacing="110"
-                                                   Foreground="#77DCC1" />
-                                        <Button Grid.Column="1" Content="Refresh" Click="RefreshButton_Click"
-                                                Background="#304760" Foreground="White" Padding="13,7"
-                                                CornerRadius="8" />
-                                    </Grid>
-                                    <TextBlock x:Name="StatusText" Text="Monitoring starting" FontSize="20"
-                                               FontWeight="SemiBold" Foreground="White" />
-                                    <TextBlock x:Name="StatusDescription" FontSize="13" Foreground="#A8BAD1"
-                                               TextWrapping="Wrap" />
-                                    <Border Background="#101F33" CornerRadius="10" Padding="14">
-                                        <StackPanel Spacing="5">
-                                            <TextBlock Text="LATEST EVENT" FontSize="10" CharacterSpacing="90"
-                                                       Foreground="#83DFC2" />
-                                            <TextBlock x:Name="LatestEventText" Text="Waiting for events..."
-                                                       FontSize="13" Foreground="#D5E0ED" TextWrapping="Wrap" />
-                                            <TextBlock x:Name="UpdatedText" FontSize="11" Foreground="#829BB8" />
+                                    <Border Grid.Column="2"
+                                            Background="#0C3435"
+                                            BorderBrush="#168D83"
+                                            BorderThickness="1"
+                                            CornerRadius="14"
+                                            Padding="17,12"
+                                            VerticalAlignment="Top">
+                                        <StackPanel Orientation="Horizontal" Spacing="11">
+                                            <Ellipse Width="11" Height="11" Fill="#42E89A"
+                                                     VerticalAlignment="Center" />
+                                            <StackPanel Spacing="3">
+                                                <TextBlock Text="MONITOR MODE" FontSize="10"
+                                                           FontWeight="Bold" CharacterSpacing="75"
+                                                           Foreground="#B8F6E1" />
+                                                <TextBlock Text="Detection only (no blocking)"
+                                                           FontSize="11" Foreground="#9ACDBF" />
+                                            </StackPanel>
                                         </StackPanel>
                                     </Border>
-                                    <TextBlock Text="Detection only · No automatic process termination or network blocking."
-                                               FontSize="11" Foreground="#829BB8" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
+                                </Grid>
 
-                    <!-- VISION: all browser analysis controls live on their own page -->
+                                <!-- KPI SUMMARY -->
+                                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="14">
+                                    <Border Background="#102943" BorderBrush="#14649A"
+                                            BorderThickness="1" CornerRadius="16" Padding="17"
+                                            MinHeight="132">
+                                        <Grid ColumnDefinitions="54,*" ColumnSpacing="13">
+                                            <Border Width="52" Height="52" CornerRadius="12"
+                                                    Background="#0B3B61" BorderBrush="#0789C9"
+                                                    BorderThickness="1" VerticalAlignment="Center">
+                                                <FontIcon Glyph="&#xE7F4;" FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="23" Foreground="#69D7FF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                                <TextBlock Text="Process Events" FontSize="13" Foreground="#D9E9F8" />
+                                                <TextBlock x:Name="ProcessesText" Text="0" FontSize="33"
+                                                           FontWeight="Bold" Foreground="White" />
+                                                <TextBlock Text="Observed this session" FontSize="11" Foreground="#9AB6D1" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Grid.Column="1" Background="#102943" BorderBrush="#087D91"
+                                            BorderThickness="1" CornerRadius="16" Padding="17" MinHeight="132">
+                                        <Grid ColumnDefinitions="54,*" ColumnSpacing="13">
+                                            <Border Width="52" Height="52" CornerRadius="12"
+                                                    Background="#0A3C4A" BorderBrush="#0BA6B7"
+                                                    BorderThickness="1" VerticalAlignment="Center">
+                                                <FontIcon Glyph="&#xE774;" FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="23" Foreground="#65E5F0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                                <TextBlock Text="TCP Events" FontSize="13" Foreground="#D9E9F8" />
+                                                <TextBlock x:Name="ConnectionsText" Text="0" FontSize="33"
+                                                           FontWeight="Bold" Foreground="White" />
+                                                <TextBlock Text="Observed connections" FontSize="11" Foreground="#9AB6D1" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Grid.Column="2" Background="#102B3A" BorderBrush="#15976E"
+                                            BorderThickness="1" CornerRadius="16" Padding="17" MinHeight="132">
+                                        <Grid ColumnDefinitions="54,*" ColumnSpacing="13">
+                                            <Border Width="52" Height="52" CornerRadius="12"
+                                                    Background="#164C3E" BorderBrush="#24C58B"
+                                                    BorderThickness="1" VerticalAlignment="Center">
+                                                <FontIcon Glyph="&#xE7BA;" FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="23" Foreground="#FFE16B" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                                <TextBlock Text="Alerts" FontSize="13" Foreground="#D9E9F8" />
+                                                <TextBlock x:Name="AlertsText" Text="0" FontSize="33"
+                                                           FontWeight="Bold" Foreground="White" />
+                                                <TextBlock Text="Detections recorded" FontSize="11" Foreground="#9AB6D1" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Grid.Column="3" Background="#172744" BorderBrush="#5C59A5"
+                                            BorderThickness="1" CornerRadius="16" Padding="17" MinHeight="132">
+                                        <Grid ColumnDefinitions="54,*" ColumnSpacing="13">
+                                            <Border Width="52" Height="52" CornerRadius="12"
+                                                    Background="#302D65" BorderBrush="#8279E8"
+                                                    BorderThickness="1" VerticalAlignment="Center">
+                                                <FontIcon Glyph="&#xE753;" FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="23" Foreground="#C7B9FF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                                <TextBlock Text="Cloud AI" FontSize="13" Foreground="#D9E9F8" />
+                                                <TextBlock x:Name="CloudAiDashboardText" Text="Checking" FontSize="22"
+                                                           FontWeight="Bold" Foreground="#73E7B6" />
+                                                <TextBlock Text="Claude analysis" FontSize="11" Foreground="#9AB6D1" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <!-- ENDPOINT ENGINE + RECENT ACTIVITY -->
+                                <Grid ColumnDefinitions="1.28*,*" ColumnSpacing="18">
+                                    <Border Background="#102943" BorderBrush="#17679B"
+                                            BorderThickness="1" CornerRadius="17" Padding="21">
+                                        <StackPanel Spacing="14">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel Orientation="Horizontal" Spacing="11">
+                                                    <FontIcon Glyph="&#xE72E;" FontFamily="Segoe MDL2 Assets"
+                                                              FontSize="22" Foreground="#55DDF0" />
+                                                    <TextBlock Text="ENDPOINT ENGINE" FontSize="12"
+                                                               FontWeight="SemiBold" CharacterSpacing="115"
+                                                               Foreground="#70DDF0" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="⟳  Refresh"
+                                                        Click="RefreshButton_Click"
+                                                        Background="#173F61" BorderBrush="#286B9B"
+                                                        BorderThickness="1" Foreground="#EAF6FF"
+                                                        Padding="15,8" CornerRadius="9" />
+                                            </Grid>
+
+                                            <TextBlock x:Name="StatusText" Text="Monitoring starting"
+                                                       FontSize="27" FontWeight="Bold"
+                                                       Foreground="#68E69A" />
+                                            <TextBlock x:Name="StatusDescription"
+                                                       Text="Guardian endpoint monitoring engine is running. Detection only; no automatic blocking."
+                                                       FontSize="14" Foreground="#B2C8DE"
+                                                       TextWrapping="Wrap" />
+
+                                            <Border Background="#0A2038" BorderBrush="#087F9D"
+                                                    BorderThickness="1" CornerRadius="13" Padding="16">
+                                                <Grid ColumnDefinitions="52,*" ColumnSpacing="13">
+                                                    <Border Width="48" Height="48" CornerRadius="11"
+                                                            Background="#0C3C58" BorderBrush="#0A90B5"
+                                                            BorderThickness="1">
+                                                        <FontIcon Glyph="&#xE73A;" FontFamily="Segoe MDL2 Assets"
+                                                                  FontSize="22" Foreground="#63DFFF" />
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+                                                        <TextBlock Text="LATEST EVENT" FontSize="10"
+                                                                   CharacterSpacing="105" FontWeight="SemiBold"
+                                                                   Foreground="#69DDE8" />
+                                                        <TextBlock x:Name="LatestEventText"
+                                                                   Text="Waiting for endpoint events..."
+                                                                   FontSize="14" Foreground="#F0F6FF"
+                                                                   TextWrapping="Wrap" />
+                                                        <TextBlock x:Name="UpdatedText" FontSize="11"
+                                                                   Foreground="#8EACC8" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+
+                                            <Border Height="1" Background="#24445F" />
+                                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <Ellipse Width="9" Height="9" Fill="#45E4A2" VerticalAlignment="Center" />
+                                                    <StackPanel Spacing="2">
+                                                        <TextBlock Text="Mode" FontSize="10" Foreground="#8FAFCA" />
+                                                        <TextBlock Text="Detection only" FontSize="12" FontWeight="SemiBold" Foreground="#E6F2FF" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon Glyph="&#xE9D9;" FontFamily="Segoe MDL2 Assets"
+                                                              FontSize="17" Foreground="#4FE2B1" VerticalAlignment="Center" />
+                                                    <StackPanel Spacing="2">
+                                                        <TextBlock Text="Engine Status" FontSize="10" Foreground="#8FAFCA" />
+                                                        <TextBlock x:Name="EngineStatusMiniText" Text="Starting" FontSize="12"
+                                                                   FontWeight="SemiBold" Foreground="#65E8A5" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon Glyph="&#xE823;" FontFamily="Segoe MDL2 Assets"
+                                                              FontSize="17" Foreground="#8BCFFF" VerticalAlignment="Center" />
+                                                    <StackPanel Spacing="2">
+                                                        <TextBlock Text="Uptime" FontSize="10" Foreground="#8FAFCA" />
+                                                        <TextBlock x:Name="UptimeText" Text="00:00" FontSize="12"
+                                                                   FontWeight="SemiBold" Foreground="#E6F2FF" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Column="1" Background="#102943" BorderBrush="#17679B"
+                                            BorderThickness="1" CornerRadius="17" Padding="21">
+                                        <StackPanel Spacing="12">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel Orientation="Horizontal" Spacing="11">
+                                                    <FontIcon Glyph="&#xE9D9;" FontFamily="Segoe MDL2 Assets"
+                                                              FontSize="22" Foreground="#59DDF0" />
+                                                    <TextBlock Text="Recent Activity" FontSize="19"
+                                                               FontWeight="SemiBold" Foreground="#F1F7FF"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <Border Grid.Column="1" Background="#173D5C"
+                                                        BorderBrush="#286B9B" BorderThickness="1"
+                                                        CornerRadius="12" Padding="9,5">
+                                                    <TextBlock Text="Last 5 events" FontSize="10" Foreground="#B9DDF7" />
+                                                </Border>
+                                            </Grid>
+                                            <Border Height="1" Background="#24445F" />
+                                            <StackPanel x:Name="RecentActivityPanel" Spacing="0">
+                                                <TextBlock Text="Waiting for endpoint activity..."
+                                                           FontSize="12" Foreground="#9BB6D0" />
+                                            </StackPanel>
+                                            <Border Height="1" Background="#24445F" />
+                                            <Button Content="View full history  →"
+                                                    Click="OpenHistoryButton_Click"
+                                                    Background="Transparent" Foreground="#55D8F5"
+                                                    HorizontalAlignment="Center"
+                                                    Padding="14,8" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- PROJECT MISSION -->
+                                <Border Background="#0E2945" BorderBrush="#176EA4"
+                                        BorderThickness="1" CornerRadius="17" Padding="24">
+                                    <Grid ColumnDefinitions="*,170" ColumnSpacing="22">
+                                        <StackPanel Spacing="10" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                                <FontIcon Glyph="&#xE91B;" FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="25" Foreground="#55DDF0" />
+                                                <TextBlock Text="Project Mission" FontSize="23"
+                                                           FontWeight="Bold" Foreground="#F1F7FF"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <Border Height="1" Background="#255276" />
+                                            <TextBlock Text="A safer digital experience."
+                                                       FontSize="24" FontWeight="Bold"
+                                                       Foreground="#81DDFB" />
+                                            <TextBlock Text="Guardian combines endpoint telemetry, explainable detection and AI-assisted website analysis to help people recognize phishing and suspicious activity before harm occurs."
+                                                       FontSize="14" Foreground="#C2D5E8"
+                                                       TextWrapping="Wrap" MaxWidth="760" />
+                                            <TextBlock Text="Long-term vision: reduce successful phishing through continuous, privacy-aware assistance — with transparent evidence and human oversight."
+                                                       FontSize="12" Foreground="#8FAECC"
+                                                       TextWrapping="Wrap" MaxWidth="760" />
+                                        </StackPanel>
+                                        <Grid Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                            <Ellipse Width="142" Height="142" Fill="#0B3B5D" Opacity="0.55" />
+                                            <FontIcon Glyph="&#xE72E;" FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="94" Foreground="#35C8F4"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+
+                                <TextBlock Text="GUARDIAN  ·  ENDPOINT SECURITY INTELLIGENCE  ·  DETECTION ONLY"
+                                           FontSize="10" CharacterSpacing="95"
+                                           Foreground="#6586A7" HorizontalAlignment="Center"
+                                           Margin="0,0,0,5" />
+                            </StackPanel>
+                        </Grid>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <!-- GUARDIAN VISION -->
                     <ScrollViewer x:Name="VisionContent" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Padding="30,26,30,34" Spacing="20">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="5">
-                                    <TextBlock Text="GUARDIAN VISION" FontSize="10" CharacterSpacing="130"
-                                               Foreground="#77DCC1" />
-                                    <TextBlock Text="Website security analysis" FontSize="29" FontWeight="Bold"
-                                               Foreground="White" />
+                        <StackPanel Padding="30,28,30,36" Spacing="20">
+                            <Grid ColumnDefinitions="6,*,Auto" ColumnSpacing="17">
+                                <Border Width="5" Height="68" CornerRadius="3" Background="#29C8EF" />
+                                <StackPanel Grid.Column="1" Spacing="5">
+                                    <TextBlock Text="GUARDIAN VISION" FontSize="11" CharacterSpacing="135"
+                                               FontWeight="SemiBold" Foreground="#70E4D0" />
+                                    <TextBlock Text="Website Security Analysis" FontSize="36"
+                                               FontWeight="Bold" Foreground="#F4F8FF" />
                                     <TextBlock Text="Local OCR and heuristic screening, with optional Claude contextual analysis."
-                                               FontSize="13" Foreground="#9DB3CE" TextWrapping="Wrap" />
+                                               FontSize="14" Foreground="#B1C8E0" TextWrapping="Wrap" />
                                 </StackPanel>
-                                <Button Grid.Column="1" Content="ⓘ  How it works" Click="VisionInfoButton_Click"
-                                        Background="#293F59" Foreground="#BDEBFF" Padding="12,8"
-                                        CornerRadius="8" VerticalAlignment="Top" />
+                                <Button Grid.Column="2" Content="ⓘ  How it works" Click="VisionInfoButton_Click"
+                                        Background="#173F61" BorderBrush="#286B9B" BorderThickness="1"
+                                        Foreground="#EAF6FF" Padding="14,9" CornerRadius="9"
+                                        VerticalAlignment="Top" />
                             </Grid>
 
-                            <Border Background="#17283E" BorderBrush="#2B4C6D" BorderThickness="1"
-                                    CornerRadius="14" Padding="20">
+                            <Border Background="#102943" BorderBrush="#17679B" BorderThickness="1"
+                                    CornerRadius="16" Padding="21">
                                 <StackPanel Spacing="14">
-                                    <TextBlock Text="CAPTURE CONTROLS" FontSize="10" CharacterSpacing="110"
-                                               Foreground="#77DCC1" />
-                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                    <TextBlock Text="CAPTURE CONTROLS" FontSize="11" CharacterSpacing="115"
+                                               FontWeight="SemiBold" Foreground="#70DDF0" />
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
                                         <Button Content="Analyze selected window" Click="AnalyzeScreenButton_Click"
-                                                Background="#1269A5" Foreground="White" Padding="14,13"
-                                                CornerRadius="9" />
+                                                Background="#087CB8" Foreground="White" Padding="15,14"
+                                                CornerRadius="10" FontSize="14" />
                                         <Button x:Name="ContinuousVisionButton" Grid.Column="1"
                                                 Content="Start continuous monitoring"
                                                 Click="ContinuousVisionButton_Click"
-                                                Background="#176D5A" Foreground="White"
-                                                Padding="14,13" CornerRadius="9" />
+                                                Background="#14785E" Foreground="White"
+                                                Padding="15,14" CornerRadius="10" FontSize="14" />
                                     </Grid>
                                     <TextBlock x:Name="ContinuousVisionStatusText"
-                                               Text="Continuous monitoring inactive" FontSize="11"
-                                               Foreground="#A6BBD2" TextWrapping="Wrap" />
+                                               Text="Continuous monitoring inactive" FontSize="12"
+                                               Foreground="#A6C1D8" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
 
-                            <Border Background="#17283E" BorderBrush="#2B4C6D" BorderThickness="1"
-                                    CornerRadius="14" Padding="20">
+                            <Border Background="#102943" BorderBrush="#17679B" BorderThickness="1"
+                                    CornerRadius="16" Padding="21">
                                 <StackPanel Spacing="14">
-                                    <TextBlock Text="LATEST LOCAL ASSESSMENT" FontSize="10" CharacterSpacing="110"
-                                               Foreground="#77DCC1" />
-                                    <TextBlock x:Name="VisionStatusText" Text="No website analyzed" FontSize="21"
-                                               FontWeight="SemiBold" Foreground="White" TextWrapping="Wrap" />
-                                    <TextBlock x:Name="VisionDomainText" Text="No active website" FontSize="13"
-                                               Foreground="#A8BAD1" TextWrapping="Wrap" />
-                                    <Border x:Name="VisionRiskBadge" Background="#34445A" CornerRadius="9" Padding="13">
+                                    <TextBlock Text="LATEST LOCAL ASSESSMENT" FontSize="11" CharacterSpacing="115"
+                                               FontWeight="SemiBold" Foreground="#70DDF0" />
+                                    <TextBlock x:Name="VisionStatusText" Text="No website analyzed" FontSize="25"
+                                               FontWeight="Bold" Foreground="White" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="VisionDomainText" Text="No active website" FontSize="14"
+                                               Foreground="#B1C8E0" TextWrapping="Wrap" />
+                                    <Border x:Name="VisionRiskBadge" Background="#34445A" CornerRadius="10" Padding="14">
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Text="LOCAL RISK ASSESSMENT" FontSize="10" Foreground="#D0DCEB" />
+                                            <TextBlock Text="LOCAL RISK ASSESSMENT" FontSize="11" Foreground="#D0DCEB" />
                                             <TextBlock x:Name="VisionRiskBadgeText" Grid.Column="1" Text="UNKNOWN"
                                                        FontWeight="Bold" Foreground="White" />
                                         </Grid>
                                     </Border>
-                                    <TextBlock x:Name="VisionScoreText" Text="--/100" FontSize="32"
+                                    <TextBlock x:Name="VisionScoreText" Text="--/100" FontSize="36"
                                                FontWeight="Bold" Foreground="White" />
                                     <TextBlock x:Name="VisionSummaryText" Text="Select a browser window to begin."
-                                               FontSize="13" Foreground="#B4C5D9" TextWrapping="Wrap" />
+                                               FontSize="14" Foreground="#C0D2E5" TextWrapping="Wrap" />
                                     <Button x:Name="VisionDetailsButton" Content="View full security report"
-                                            Click="VisionDetailsButton_Click" Background="#304760"
-                                            Foreground="White" Padding="13,11" CornerRadius="9"
+                                            Click="VisionDetailsButton_Click" Background="#173F61"
+                                            BorderBrush="#286B9B" BorderThickness="1"
+                                            Foreground="White" Padding="14,11" CornerRadius="9"
                                             IsEnabled="False" HorizontalAlignment="Left" />
                                 </StackPanel>
                             </Border>
 
-                            <Border Background="#17283E" BorderBrush="#2B4C6D" BorderThickness="1"
-                                    CornerRadius="14" Padding="20">
-                                <StackPanel Spacing="12">
+                            <Border Background="#122744" BorderBrush="#5755A0" BorderThickness="1"
+                                    CornerRadius="16" Padding="21">
+                                <StackPanel Spacing="13">
                                     <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Text="CLOUD AI · CLAUDE" FontSize="10" CharacterSpacing="110"
-                                                   Foreground="#77DCC1" />
+                                        <TextBlock Text="CLOUD AI  ·  CLAUDE" FontSize="11" CharacterSpacing="115"
+                                                   FontWeight="SemiBold" Foreground="#B9B0FF" />
                                         <TextBlock Grid.Column="1" Text="OPTIONAL · USER-INITIATED"
-                                                   FontSize="9" Foreground="#9DB3CE" />
+                                                   FontSize="10" Foreground="#B0B4D5" />
                                     </Grid>
-                                    <TextBlock Text="Independent contextual assessment" FontSize="18"
+                                    <TextBlock Text="Independent contextual assessment" FontSize="20"
                                                FontWeight="SemiBold" Foreground="White" />
                                     <TextBlock Text="Only the verified URL, OCR text and local heuristic findings are sent. Screenshots are not uploaded."
-                                               FontSize="12" Foreground="#A8BAD1" TextWrapping="Wrap" />
+                                               FontSize="13" Foreground="#B9C8DD" TextWrapping="Wrap" />
                                     <Button x:Name="CloudAiButton" Content="Analyze latest page with Claude"
                                             Click="CloudAiButton_Click" IsEnabled="False"
-                                            Background="#245D91" Foreground="White" Padding="14,12"
-                                            CornerRadius="9" />
-                                    <TextBlock x:Name="VisionAiVerdictText" Text="Not analyzed" FontSize="17"
+                                            Background="#3D4D9A" BorderBrush="#7777D8" BorderThickness="1"
+                                            Foreground="White" Padding="15,13" CornerRadius="9" FontSize="14" />
+                                    <TextBlock x:Name="VisionAiVerdictText" Text="Not analyzed" FontSize="19"
                                                FontWeight="SemiBold" Foreground="White" />
-                                    <TextBlock x:Name="CloudAiStatusText" FontSize="12" Foreground="#A8BAD1"
+                                    <TextBlock x:Name="CloudAiStatusText" FontSize="13" Foreground="#B9C8DD"
                                                TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- SETTINGS: notification and privacy controls -->
+                    <!-- SETTINGS -->
                     <ScrollViewer x:Name="SettingsContent" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Padding="30,26,30,34" Spacing="20">
-                            <StackPanel Spacing="5">
-                                <TextBlock Text="GUARDIAN CONFIGURATION" FontSize="10" CharacterSpacing="130"
-                                           Foreground="#77DCC1" />
-                                <TextBlock Text="Settings and privacy" FontSize="29" FontWeight="Bold"
-                                           Foreground="White" />
-                                <TextBlock Text="Notification status, Cloud AI configuration and data handling."
-                                           FontSize="13" Foreground="#9DB3CE" />
-                            </StackPanel>
-                            <Border Background="#17283E" BorderBrush="#2B4C6D" BorderThickness="1"
-                                    CornerRadius="14" Padding="20">
-                                <StackPanel Spacing="12">
+                        <StackPanel Padding="30,28,30,36" Spacing="20">
+                            <Grid ColumnDefinitions="6,*" ColumnSpacing="17">
+                                <Border Width="5" Height="68" CornerRadius="3" Background="#29C8EF" />
+                                <StackPanel Grid.Column="1" Spacing="5">
+                                    <TextBlock Text="GUARDIAN CONFIGURATION" FontSize="11" CharacterSpacing="125"
+                                               FontWeight="SemiBold" Foreground="#70E4D0" />
+                                    <TextBlock Text="Settings &amp; Privacy" FontSize="36" FontWeight="Bold"
+                                               Foreground="#F4F8FF" />
+                                    <TextBlock Text="Notification status, Cloud AI configuration and data handling."
+                                               FontSize="14" Foreground="#B1C8E0" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Background="#102943" BorderBrush="#17679B" BorderThickness="1"
+                                    CornerRadius="16" Padding="21">
+                                <StackPanel Spacing="13">
                                     <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Text="WINDOWS NOTIFICATIONS" FontSize="10" CharacterSpacing="110"
-                                                   Foreground="#77DCC1" />
+                                        <TextBlock Text="WINDOWS NOTIFICATIONS" FontSize="11" CharacterSpacing="115"
+                                                   FontWeight="SemiBold" Foreground="#70DDF0" />
                                         <Button Grid.Column="1" Content="ⓘ  Info" Click="NotificationInfoButton_Click"
-                                                Background="#293F59" Foreground="#BDEBFF" Padding="10,6"
-                                                CornerRadius="8" />
+                                                Background="#173F61" BorderBrush="#286B9B" BorderThickness="1"
+                                                Foreground="#EAF6FF" Padding="11,7" CornerRadius="8" />
                                     </Grid>
                                     <TextBlock x:Name="NotificationStatusText" Text="Initializing notifications..."
-                                               FontSize="13" Foreground="#D5E0ED" TextWrapping="Wrap" />
+                                               FontSize="14" Foreground="#D5E4F2" TextWrapping="Wrap" />
                                     <Button Content="Send test notification" Click="TestNotificationButton_Click"
-                                            HorizontalAlignment="Left" Background="#304760" Foreground="White"
+                                            HorizontalAlignment="Left" Background="#173F61"
+                                            BorderBrush="#286B9B" BorderThickness="1" Foreground="White"
                                             Padding="14,10" CornerRadius="9" />
                                     <TextBlock Text="Automatic Windows notifications are used for new HIGH and CRITICAL findings."
-                                               FontSize="11" Foreground="#829BB8" TextWrapping="Wrap" />
+                                               FontSize="12" Foreground="#91ABC5" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
-                            <Border Background="#17283E" BorderBrush="#2B4C6D" BorderThickness="1"
-                                    CornerRadius="14" Padding="20">
-                                <StackPanel Spacing="10">
-                                    <TextBlock Text="CLOUD AI AND PRIVACY" FontSize="10" CharacterSpacing="110"
-                                               Foreground="#77DCC1" />
+                            <Border Background="#102943" BorderBrush="#17679B" BorderThickness="1"
+                                    CornerRadius="16" Padding="21">
+                                <StackPanel Spacing="11">
+                                    <TextBlock Text="CLOUD AI AND PRIVACY" FontSize="11" CharacterSpacing="115"
+                                               FontWeight="SemiBold" Foreground="#70DDF0" />
                                     <TextBlock Text="Claude is an optional second opinion. Cloud analysis runs only after you click the analysis button."
-                                               FontSize="13" Foreground="#D5E0ED" TextWrapping="Wrap" />
+                                               FontSize="14" Foreground="#D5E4F2" TextWrapping="Wrap" />
                                     <TextBlock Text="The Anthropic API key is stored only in Cloudflare. The desktop token is encrypted with Windows DPAPI for the current Windows user. Never publish this private-beta build with a shared access token embedded in the executable."
-                                               FontSize="12" Foreground="#A8BAD1" TextWrapping="Wrap" />
+                                               FontSize="13" Foreground="#B1C8E0" TextWrapping="Wrap" />
                                     <TextBlock Text="No screenshot is uploaded by the current client. The cloud request contains the verified URL, recognized text and local heuristic findings."
-                                               FontSize="12" Foreground="#A8BAD1" TextWrapping="Wrap" />
+                                               FontSize="13" Foreground="#B1C8E0" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- DEDICATED DATA MODULES: Endpoint, Alerts, History -->
-                    <Frame x:Name="ModuleFrame" Visibility="Collapsed" Background="#0B1424" />
+                    <!-- OTHER MODULES: Endpoint, Domain, Alerts, History, Author -->
+                    <Frame x:Name="ModuleFrame" Visibility="Collapsed" Background="#07172A" />
                 </Grid>
             </NavigationView.Content>
         </NavigationView>

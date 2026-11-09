@@ -480,3 +480,27 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+# Guardian signing credentials and private keys
+*.pfx
+*.p12
+*.key
+*.pem
+
+# Guardian generated build and installer artifacts
+Guardian.Desktop/AppPackages/
+Installer/Payload/
+Installer/Output/
+
+# Keep the external-location publish profile
+!Guardian.Desktop/Properties/PublishProfiles/
+!Guardian.Desktop/Properties/PublishProfiles/win-x64-external.pubxml
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+secrets.json
+credentials.json
+
+# Local application data
+logs/

@@ -1,0 +1,11 @@
+Output/
+Payload/*.msix
+Payload/*.msixbundle
+Payload/*.appx
+Payload/*.cer
+Payload/*.pfx
+Payload/**/*.msix
+Payload/**/*.msixbundle
+Payload/**/*.appx
+Payload/**/*.cer
+Payload/**/*.pfx

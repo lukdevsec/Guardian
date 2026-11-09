@@ -1,0 +1,133 @@
+<Page
+    x:Class="Guardian.Desktop.Pages.AuthorPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Background="#07172A">
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Padding="34,30,34,38" Spacing="22">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="GUARDIAN · ABOUT THE CREATOR" FontSize="10"
+                               CharacterSpacing="125" Foreground="#70DDF0" />
+                    <TextBlock Text="The person behind Guardian" FontSize="32"
+                               FontWeight="Bold" Foreground="White" />
+                    <TextBlock Text="A cybersecurity portfolio project built around endpoint visibility, phishing awareness and explainable security analysis."
+                               FontSize="13" Foreground="#B1C8E0"
+                               TextWrapping="Wrap" MaxWidth="820" />
+                </StackPanel>
+
+                <Border Background="#102943" BorderBrush="#17679B" BorderThickness="1"
+                        CornerRadius="16" Padding="24">
+                    <Grid ColumnDefinitions="112,*" ColumnSpacing="22">
+                        <Border Width="104" Height="104" CornerRadius="18"
+                                Background="#183F61" BorderBrush="#3286BC"
+                                BorderThickness="1" VerticalAlignment="Top">
+                            <TextBlock Text="ŁI" FontSize="38" FontWeight="Bold"
+                                       Foreground="#BDEBFF" HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="7">
+                            <TextBlock Text="Łukasz Izdebski" FontSize="27"
+                                       FontWeight="Bold" Foreground="White" />
+                            <TextBlock Text="lukdevsec" FontSize="14" Foreground="#73C9FF" />
+                            <TextBlock Text="Cybersecurity Student  |  Aspiring SOC Analyst  |  Networking &amp; Security"
+                                       FontSize="13" Foreground="#C2D2E3" TextWrapping="Wrap" />
+                            <TextBlock Text="Interested in security monitoring, detection engineering, network security and practical incident investigation."
+                                       FontSize="12" Foreground="#9FB4CC" TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
+                                <Button Content="GitHub  ↗" Click="GitHubButton_Click"
+                                        Background="#24547B" Foreground="White"
+                                        Padding="15,9" CornerRadius="8" />
+                                <Button Content="LinkedIn  ↗" Click="LinkedInButton_Click"
+                                        Background="#24547B" Foreground="White"
+                                        Padding="15,9" CornerRadius="8" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Background="#102943" BorderBrush="#17679B" BorderThickness="1"
+                        CornerRadius="14" Padding="21">
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <FontIcon Glyph="&#xE734;" FontFamily="Segoe MDL2 Assets"
+                                      FontSize="18" Foreground="#72CFFF" />
+                            <TextBlock Text="Why I created Guardian" FontSize="19"
+                                       FontWeight="SemiBold" Foreground="White" />
+                        </StackPanel>
+                        <TextBlock Text="Guardian started as a practical way to connect my interest in cybersecurity, networking and endpoint monitoring into one hands-on project. I wanted to build more than a static demo: an application that collects telemetry, explains detections, investigates processes and helps users understand suspicious websites."
+                                   FontSize="13" Foreground="#C1D0E1" TextWrapping="Wrap" LineHeight="21" />
+                        <TextBlock Text="The project is also a learning and portfolio journey. It gives me a place to practice C#, Windows internals, network monitoring, detection logic, incident triage, secure application design and AI-assisted analysis."
+                                   FontSize="13" Foreground="#C1D0E1" TextWrapping="Wrap" LineHeight="21" />
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#122A42" BorderBrush="#26729D" BorderThickness="1"
+                        CornerRadius="14" Padding="21">
+                    <StackPanel Spacing="11">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <FontIcon Glyph="&#xE91B;" FontFamily="Segoe MDL2 Assets"
+                                      FontSize="19" Foreground="#73D7FF" />
+                            <TextBlock Text="Project mission" FontSize="19"
+                                       FontWeight="SemiBold" Foreground="White" />
+                        </StackPanel>
+                        <TextBlock Text="Long-term ambition: help make phishing significantly harder to succeed against — for everyday users and, eventually, organizations."
+                                   FontSize="17" FontWeight="SemiBold" Foreground="#8DDBFF" TextWrapping="Wrap" />
+                        <TextBlock Text="People can overlook subtle warning signs when they are busy, distracted or under pressure. Guardian is intended to provide an additional layer of vigilance: combining local signals, endpoint telemetry, domain analysis and AI-assisted reasoning to surface evidence that deserves attention."
+                                   FontSize="13" Foreground="#C1D0E1" TextWrapping="Wrap" LineHeight="21" />
+                        <TextBlock Text="The long-term vision is prevention-first protection while Guardian is active. That is an ambition, not a claim that the current version can eliminate all phishing or stop every malicious action."
+                                   FontSize="12" Foreground="#9FB4CC" TextWrapping="Wrap" LineHeight="20" />
+                    </StackPanel>
+                </Border>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                    <Border Background="#102943" BorderBrush="#17679B" BorderThickness="1"
+                            CornerRadius="14" Padding="19">
+                        <StackPanel Spacing="9">
+                            <TextBlock Text="DESIGN PRINCIPLES" FontSize="10"
+                                       CharacterSpacing="105" Foreground="#70DDF0" />
+                            <TextBlock Text="Explainable by default" FontSize="16"
+                                       FontWeight="SemiBold" Foreground="White" />
+                            <TextBlock Text="Show why something was flagged. Unknown does not mean malicious, and a model verdict is not proof."
+                                       FontSize="12" Foreground="#AFC2D8" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Background="#102943" BorderBrush="#17679B" BorderThickness="1"
+                            CornerRadius="14" Padding="19">
+                        <StackPanel Spacing="9">
+                            <TextBlock Text="PRIVACY &amp; CONTROL" FontSize="10"
+                                       CharacterSpacing="105" Foreground="#70DDF0" />
+                            <TextBlock Text="Human in control" FontSize="16"
+                                       FontWeight="SemiBold" Foreground="White" />
+                            <TextBlock Text="Current monitoring is detection-only. Cloud AI is optional and user-initiated; screenshots are not uploaded by the current client."
+                                       FontSize="12" Foreground="#AFC2D8" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Background="#102943" BorderBrush="#17679B" BorderThickness="1"
+                        CornerRadius="14" Padding="21">
+                    <StackPanel Spacing="9">
+                        <TextBlock Text="PROJECT STATUS" FontSize="10"
+                                   CharacterSpacing="110" Foreground="#70DDF0" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Guardian v0.9.5" FontSize="17"
+                                       FontWeight="SemiBold" Foreground="White" />
+                            <Border Grid.Column="1" Background="#183D35" CornerRadius="7" Padding="9,4">
+                                <TextBlock Text="ACTIVE DEVELOPMENT" FontSize="9"
+                                           FontWeight="Bold" Foreground="#8DE3C1" />
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="Guardian is an evolving portfolio and development project. It is not currently a certified antivirus, complete enterprise EDR or guarantee against phishing. Detection coverage, false positives and reliability continue to be tested and improved."
+                                   FontSize="12" Foreground="#AFC2D8" TextWrapping="Wrap" LineHeight="20" />
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="Created by Łukasz Izdebski · lukdevsec"
+                           FontSize="11" Foreground="#718BA8"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

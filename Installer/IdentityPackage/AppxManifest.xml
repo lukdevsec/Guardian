@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  IgnorableNamespaces="uap uap10 rescap desktop com">
+
+  <Identity
+    Name="2fdd8c0d-4f9d-4038-909f-5dc994b95ba1"
+    Publisher="CN=Golden Retriever"
+    Version="1.0.0.0"
+    ProcessorArchitecture="neutral" />
+
+  <Properties>
+    <DisplayName>Guardian</DisplayName>
+    <PublisherDisplayName>Golden Retriever</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <uap10:AllowExternalContent>true</uap10:AllowExternalContent>
+  </Properties>
+
+  <Dependencies>
+
+    <TargetDeviceFamily
+      Name="Windows.Desktop"
+      MinVersion="10.0.19041.0"
+      MaxVersionTested="10.0.26226.0" />
+
+    <!-- Windows App SDK Framework dependency -->
+    <PackageDependency
+      Name="Microsoft.WindowsAppRuntime.2"
+      Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+      MinVersion="2.6.5.0" />
+
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+
+    <Application
+      Id="App"
+      Executable="Guardian.Desktop.exe"
+      uap10:TrustLevel="mediumIL"
+      uap10:RuntimeBehavior="win32App">
+
+      <uap:VisualElements
+        AppListEntry="none"
+        DisplayName="Guardian"
+        Description="Endpoint Security Intelligence"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png" />
+
+      <Extensions>
+
+        <desktop:Extension
+          Category="windows.toastNotificationActivation">
+
+          <desktop:ToastNotificationActivation
+            ToastActivatorCLSID="8B514ED0-FC7C-48C1-997B-1D73DC41B6A4" />
+
+        </desktop:Extension>
+
+        <com:Extension Category="windows.comServer">
+
+          <com:ComServer>
+
+            <com:ExeServer
+              Executable="Guardian.Desktop.exe"
+              DisplayName="Guardian"
+              Arguments="----AppNotificationActivated:">
+
+              <com:Class
+                Id="8B514ED0-FC7C-48C1-997B-1D73DC41B6A4" />
+
+            </com:ExeServer>
+
+          </com:ComServer>
+
+        </com:Extension>
+
+      </Extensions>
+
+    </Application>
+
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="unvirtualizedResources" />
+  </Capabilities>
+
+</Package>

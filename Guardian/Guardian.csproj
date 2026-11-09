@@ -8,12 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Cloudflare\**" />
-    <EmbeddedResource Remove="Cloudflare\**" />
-    <None Remove="Cloudflare\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="System.Management" Version="10.0.14" />
   </ItemGroup>
 

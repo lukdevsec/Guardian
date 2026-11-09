@@ -19,6 +19,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Shapes;
 
 using Windows.Graphics;
 using Windows.Graphics.Imaging;
@@ -91,6 +92,10 @@ public sealed partial class MainWindow : Window
 
     private string? _lastContinuousFingerprint;
 
+    private readonly DateTimeOffset _startedAtUtc = DateTimeOffset.UtcNow;
+
+    private string? _lastActivityFingerprint;
+
     // ==========================================
     // CONSTRUCTOR
     // ==========================================
@@ -104,13 +109,14 @@ public sealed partial class MainWindow : Window
         Title = "Guardian";
 
         // Premium desktop window.
-        AppWindow.Resize(new SizeInt32(1120, 720));
+        AppWindow.Resize(new SizeInt32(1280, 820));
+        ApplyTitleBarTheme();
 
         // ======================================
         // GUARDIAN APPLICATION ICON
         // ======================================
 
-        string iconPath = Path.Combine(
+        string iconPath = System.IO.Path.Combine(
             AppContext.BaseDirectory,
             "Assets",
             "GuardianIcon.ico");
@@ -179,7 +185,7 @@ public sealed partial class MainWindow : Window
                 {
                     _allowClose = true;
 
-                    _refreshTimer.Stop();
+                    _refreshTimer?.Stop();
 
                     ContinuousVisionButton.IsEnabled = false;
 
@@ -294,6 +300,14 @@ public sealed partial class MainWindow : Window
             ? "Guardian Cloud ready · Claude analysis runs only when requested."
             : "Cloud token not configured. Run Scripts\\Setup-GuardianCloudToken.ps1 once on this Windows account.";
 
+        CloudAiDashboardText.Text = _cloudClient.IsConfigured
+            ? "Configured"
+            : "Not set up";
+        CloudAiDashboardText.Foreground = new SolidColorBrush(
+            _cloudClient.IsConfigured
+                ? ColorHelper.FromArgb(255, 101, 220, 174)
+                : Colors.Orange);
+
         // ======================================
         // INITIAL ENDPOINT STATE
         // ======================================
@@ -302,6 +316,41 @@ public sealed partial class MainWindow : Window
 
         Debug.WriteLine(
             "Guardian Premium Desktop initialized.");
+    }
+
+    // ==========================================
+    // WINDOW CHROME
+    // ==========================================
+
+    private void ApplyTitleBarTheme()
+    {
+        try
+        {
+            if (!AppWindowTitleBar.IsCustomizationSupported())
+                return;
+
+            var titleBar = AppWindow.TitleBar;
+            var background = ColorHelper.FromArgb(255, 5, 19, 36);
+
+            titleBar.BackgroundColor = background;
+            titleBar.ForegroundColor = Colors.White;
+            titleBar.ButtonBackgroundColor = background;
+            titleBar.ButtonForegroundColor = Colors.White;
+            titleBar.ButtonHoverBackgroundColor =
+                ColorHelper.FromArgb(255, 22, 55, 83);
+            titleBar.ButtonHoverForegroundColor = Colors.White;
+            titleBar.ButtonPressedBackgroundColor =
+                ColorHelper.FromArgb(255, 28, 76, 111);
+            titleBar.ButtonPressedForegroundColor = Colors.White;
+            titleBar.InactiveBackgroundColor = background;
+            titleBar.InactiveForegroundColor = ColorHelper.FromArgb(255, 174, 194, 214);
+            titleBar.ButtonInactiveBackgroundColor = background;
+            titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(255, 174, 194, 214);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Guardian title bar theme could not be applied: {ex.Message}");
+        }
     }
 
     // ==========================================
@@ -336,7 +385,13 @@ public sealed partial class MainWindow : Window
                 SettingsContent.Visibility = Visibility.Visible;
                 break;
 
+            case "Author":
+                ModuleFrame.Visibility = Visibility.Visible;
+                ModuleFrame.Navigate(typeof(AuthorPage));
+                break;
+
             case "Endpoint":
+            case "Domain":
             case "Alerts":
             case "History":
                 ModuleFrame.Visibility = Visibility.Visible;
@@ -345,6 +400,28 @@ public sealed partial class MainWindow : Window
         }
 
         Debug.WriteLine($"Guardian navigation: {section}");
+    }
+
+    private void OpenAuthorButton_Click(object sender, RoutedEventArgs e)
+    {
+        var authorItem = RootNavigation.FooterMenuItems
+            .OfType<NavigationViewItem>()
+            .FirstOrDefault(item => string.Equals(
+                item.Tag?.ToString(), "Author", StringComparison.Ordinal));
+
+        if (authorItem != null)
+            RootNavigation.SelectedItem = authorItem;
+    }
+
+    private void OpenHistoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        var historyItem = RootNavigation.MenuItems
+            .OfType<NavigationViewItem>()
+            .FirstOrDefault(item => string.Equals(
+                item.Tag?.ToString(), "History", StringComparison.Ordinal));
+
+        if (historyItem != null)
+            RootNavigation.SelectedItem = historyItem;
     }
 
     // ==========================================
@@ -382,6 +459,18 @@ public sealed partial class MainWindow : Window
 
             UpdatedText.Text =
                 $"Updated: {DateTime.Now:HH:mm:ss}";
+
+            RefreshRecentActivity(snapshot.RecentEvents);
+
+            EngineStatusMiniText.Text =
+                snapshot.ServiceStatus == "Running" ? "Running" : "Starting";
+
+            EngineStatusMiniText.Foreground = new SolidColorBrush(
+                snapshot.ServiceStatus == "Running"
+                    ? ColorHelper.FromArgb(255, 91, 231, 164)
+                    : ColorHelper.FromArgb(255, 255, 190, 104));
+
+            UptimeText.Text = FormatUptime(DateTimeOffset.UtcNow - _startedAtUtc);
 
             if (snapshot.ServiceStatus == "Running")
             {
@@ -424,6 +513,106 @@ public sealed partial class MainWindow : Window
             Debug.WriteLine(
                 $"Guardian telemetry error: {ex}");
         }
+    }
+
+    private void RefreshRecentActivity(
+        IReadOnlyList<TelemetryEventSnapshot>? events)
+    {
+        var recent = events?.Take(5).ToArray() ?? Array.Empty<TelemetryEventSnapshot>();
+        string fingerprint = string.Join("|", recent.Select(item =>
+            $"{item.Timestamp.UtcDateTime.Ticks}:{item.Category}:{item.Message}"));
+
+        if (string.Equals(fingerprint, _lastActivityFingerprint, StringComparison.Ordinal))
+            return;
+
+        _lastActivityFingerprint = fingerprint;
+        RecentActivityPanel.Children.Clear();
+
+        if (recent.Length == 0)
+        {
+            RecentActivityPanel.Children.Add(new TextBlock
+            {
+                Text = "No endpoint events recorded yet.",
+                FontSize = 13,
+                Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 151, 180, 207)),
+                Margin = new Thickness(0, 12, 0, 12),
+                TextWrapping = TextWrapping.Wrap
+            });
+            return;
+        }
+
+        foreach (var item in recent)
+        {
+            var row = new Grid
+            {
+                ColumnSpacing = 12,
+                Margin = new Thickness(0, 8, 0, 8)
+            };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(91) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            Windows.UI.Color dotColor = item.Category switch
+            {
+                "ALERT" => ColorHelper.FromArgb(255, 255, 174, 105),
+                "TCP" => ColorHelper.FromArgb(255, 63, 211, 238),
+                _ => ColorHelper.FromArgb(255, 75, 225, 163)
+            };
+
+            var timePanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            timePanel.Children.Add(new Ellipse
+            {
+                Width = 8,
+                Height = 8,
+                Fill = new SolidColorBrush(dotColor),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            timePanel.Children.Add(new TextBlock
+            {
+                Text = item.Timestamp.ToLocalTime().ToString("HH:mm:ss"),
+                FontSize = 11,
+                Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 163, 194, 220)),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+            var message = new TextBlock
+            {
+                Text = item.Message,
+                FontSize = 12,
+                Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 226, 238, 249)),
+                TextWrapping = TextWrapping.Wrap,
+                MaxLines = 2,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            Grid.SetColumn(timePanel, 0);
+            Grid.SetColumn(message, 1);
+            row.Children.Add(timePanel);
+            row.Children.Add(message);
+            RecentActivityPanel.Children.Add(row);
+
+            if (!ReferenceEquals(item, recent[^1]))
+            {
+                RecentActivityPanel.Children.Add(new Border
+                {
+                    Height = 1,
+                    Background = new SolidColorBrush(ColorHelper.FromArgb(255, 31, 62, 88)),
+                    Margin = new Thickness(0, 2, 0, 2)
+                });
+            }
+        }
+    }
+
+    private static string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalHours >= 1)
+            return $"{(int)uptime.TotalHours:00}:{uptime.Minutes:00}:{uptime.Seconds:00}";
+
+        return $"{uptime.Minutes:00}:{uptime.Seconds:00}";
     }
 
     private void RefreshButton_Click(
@@ -1290,7 +1479,7 @@ public sealed partial class MainWindow : Window
         object sender,
         WindowEventArgs args)
     {
-        _refreshTimer.Stop();
+        _refreshTimer?.Stop();
 
         _windowManager.IsVisibleInTray = false;
 

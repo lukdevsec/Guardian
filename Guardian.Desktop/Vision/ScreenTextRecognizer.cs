@@ -1,4 +1,4 @@
-﻿
+
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -98,12 +98,21 @@ public sealed class ScreenTextRecognizer
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Create temporary PNG.
-            temporaryImage =
-                await ApplicationData.Current.TemporaryFolder
-                    .CreateFileAsync(
-                        $"guardian-ocr-{Guid.NewGuid():N}.png",
-                        CreationCollisionOption.GenerateUniqueName);
+            // Use a normal per-user temporary directory.
+            // ApplicationData.Current is not reliable for full-trust desktop processes.
+            string tempDirectory = Path.Combine(
+                Path.GetTempPath(),
+                "Guardian",
+                "OCR");
+
+            Directory.CreateDirectory(tempDirectory);
+
+            StorageFolder tempFolder =
+                await StorageFolder.GetFolderFromPathAsync(tempDirectory);
+
+            temporaryImage = await tempFolder.CreateFileAsync(
+                $"guardian-ocr-{Guid.NewGuid():N}.png",
+                CreationCollisionOption.GenerateUniqueName);
 
             // Encode captured image.
             using (var stream = await temporaryImage.OpenAsync(

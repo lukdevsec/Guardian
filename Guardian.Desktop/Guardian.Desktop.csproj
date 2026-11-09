@@ -30,11 +30,15 @@
 	<ItemGroup>
 
 		<!-- Include every PNG icon and its scale/targetsize variants. -->
-		<Content Include="Assets\**\*.png" />
+		<Content Include="Assets\**\*.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
 
 		<!-- Include the Windows executable/window icon. -->
 		<Content Include="Assets\GuardianIcon.ico">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 		</Content>
 
 	</ItemGroup>
@@ -90,9 +94,8 @@
 
 		<PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
 
-		<PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
-
-		<PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+		<!-- Keep trimming disabled: OCR, WinUI and reflection-based dependencies must remain intact. -->
+		<PublishTrimmed>false</PublishTrimmed>
 
 	</PropertyGroup>
 
@@ -129,6 +132,7 @@
 		<None Remove="AnalysisDetailsWindow.xaml" />
 
 		<None Remove="Pages\ModulePage.xaml" />
+		<None Remove="Pages\AuthorPage.xaml" />
 
 	</ItemGroup>
 
@@ -148,9 +152,15 @@
 	  </Page>
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Page Update="Pages\AuthorPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	</ItemGroup>
+
 	<!-- COPY RAPID OCR MODELS INTO APPX -->
 
-	<Target Name="CopyRapidOcrModelsIntoAppX" AfterTargets="Build">
+	<Target Name="CopyRapidOcrModelsIntoAppX" AfterTargets="Build" Condition="'$(WindowsPackageType)' != 'None'">
 
 		<ItemGroup>
 

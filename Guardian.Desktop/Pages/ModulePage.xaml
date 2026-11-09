@@ -3,45 +3,131 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <Grid Background="#0B1424">
+    <Grid Background="#07172A">
         <ScrollViewer VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
             <StackPanel Padding="30,26,30,34" Spacing="20">
-                <StackPanel Spacing="6">
-                    <TextBlock Text="GUARDIAN INTELLIGENCE" FontSize="10"
-                               CharacterSpacing="130" Foreground="#77DCC1" />
-                    <TextBlock x:Name="ModuleTitleText" Text="Security module"
-                               FontSize="29" FontWeight="Bold" Foreground="White" />
-                    <TextBlock x:Name="ModuleDescriptionText" FontSize="13"
-                               Foreground="#9DB3CE" TextWrapping="Wrap" />
-                </StackPanel>
 
-                <Border Background="#17283E" BorderBrush="#2B4C6D" BorderThickness="1"
-                        CornerRadius="14" Padding="18">
-                    <StackPanel Spacing="12">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Spacing="3">
-                                <TextBlock Text="MODULE STATUS" FontSize="10"
-                                           CharacterSpacing="110" Foreground="#77DCC1" />
-                                <TextBlock x:Name="ModuleStatusText" FontSize="13"
-                                           Foreground="#D5E0ED" TextWrapping="Wrap" />
-                            </StackPanel>
-                            <Button Grid.Column="1" Content="Refresh" Click="RefreshButton_Click"
-                                    Background="#304760" Foreground="White" Padding="13,8"
-                                    CornerRadius="8" VerticalAlignment="Center" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="GUARDIAN INTELLIGENCE"
+                                   FontSize="10"
+                                   CharacterSpacing="130"
+                                   Foreground="#70DDF0" />
+                        <TextBlock x:Name="ModuleTitleText"
+                                   Text="Security module"
+                                   FontSize="32"
+                                   FontWeight="Bold"
+                                   Foreground="White" />
+                        <TextBlock x:Name="ModuleDescriptionText"
+                                   FontSize="13"
+                                   Foreground="#A1B5CD"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="Refresh"
+                            Click="RefreshButton_Click"
+                            Background="#304760"
+                            Foreground="White"
+                            Padding="14,9"
+                            CornerRadius="8"
+                            VerticalAlignment="Top" />
+                </Grid>
+
+                <StackPanel x:Name="ModuleStatsPanel"
+                            Orientation="Horizontal"
+                            Spacing="10" />
+
+                <Border Background="#102943"
+                        BorderBrush="#17679B"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="18">
+                    <StackPanel Spacing="11">
+                        <TextBlock Text="MODULE STATUS"
+                                   FontSize="10"
+                                   CharacterSpacing="110"
+                                   Foreground="#70DDF0" />
+                        <TextBlock x:Name="ModuleStatusText"
+                                   FontSize="13"
+                                   Foreground="#D5E0ED"
+                                   TextWrapping="Wrap" />
+                        <Grid ColumnDefinitions="2*,*" ColumnSpacing="10">
+                            <TextBox x:Name="ModuleSearchBox"
+                                     PlaceholderText="Search processes, PID, domains or events..."
+                                     TextChanged="ModuleSearchBox_TextChanged"
+                                     Background="#101F33"
+                                     Foreground="White"
+                                     BorderBrush="#355574"
+                                     PlaceholderForeground="#8FAECC"
+                                     Padding="10,8" />
+                            <ComboBox x:Name="ModuleSeverityFilter"
+                                      Grid.Column="1"
+                                      SelectedIndex="0"
+                                      SelectionChanged="ModuleSeverityFilter_SelectionChanged"
+                                      Background="#101F33"
+                                      Foreground="White"
+                                      BorderBrush="#355574"
+                                      Padding="8,6">
+                                <ComboBoxItem Content="All records" />
+                                <ComboBoxItem Content="Critical" />
+                                <ComboBoxItem Content="High" />
+                                <ComboBoxItem Content="Medium" />
+                                <ComboBoxItem Content="Low" />
+                                <ComboBoxItem Content="Process" />
+                                <ComboBoxItem Content="TCP" />
+                                <ComboBoxItem Content="Info" />
+                            </ComboBox>
                         </Grid>
-                        <TextBox x:Name="ModuleSearchBox" PlaceholderText="Filter by process, PID, domain or event..."
-                                 TextChanged="ModuleSearchBox_TextChanged"
-                                 Background="#101F33" Foreground="White"
-                                 BorderBrush="#355574" PlaceholderForeground="#829BB8"
-                                 Padding="10,8" />
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="DomainToolsPanel"
+                        Visibility="Collapsed"
+                        Background="#102943"
+                        BorderBrush="#17679B"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="18">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="LOCAL DOMAIN INTELLIGENCE"
+                                   FontSize="10"
+                                   CharacterSpacing="110"
+                                   Foreground="#70DDF0" />
+                        <TextBlock Text="Check hostname consistency and possible brand lookalikes."
+                                   FontSize="13"
+                                   Foreground="#B1C8E0"
+                                   TextWrapping="Wrap" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <TextBox x:Name="DomainInputBox"
+                                     PlaceholderText="https://example.com"
+                                     Background="#101F33"
+                                     Foreground="White"
+                                     BorderBrush="#355574"
+                                     PlaceholderForeground="#8FAECC"
+                                     Padding="11,9" />
+                            <Button Grid.Column="1"
+                                    Content="Analyze domain"
+                                    Click="AnalyzeDomainButton_Click"
+                                    Background="#176B9F"
+                                    Foreground="White"
+                                    Padding="14,9"
+                                    CornerRadius="8" />
+                        </Grid>
+                        <StackPanel x:Name="DomainResultPanel" Spacing="8" />
+                        <TextBlock Text="Local registry checks are advisory. Unknown domains are not automatically malicious; no DNS, TLS or reputation lookup is performed."
+                                   FontSize="11"
+                                   Foreground="#8FAECC"
+                                   TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
 
                 <StackPanel x:Name="ModuleItemsPanel" Spacing="10" />
 
-                <TextBlock Text="GUARDIAN · LOCAL DEVICE DATA" FontSize="10"
-                           CharacterSpacing="90" Foreground="#637D9B"
+                <TextBlock Text="GUARDIAN · LOCAL DEVICE DATA"
+                           FontSize="10"
+                           CharacterSpacing="90"
+                           Foreground="#6586A7"
                            HorizontalAlignment="Center" />
             </StackPanel>
         </ScrollViewer>
